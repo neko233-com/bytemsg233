@@ -5,26 +5,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>bytemsg233 — 技术原理演示</title>
     <style>
-        :root{--bg:#0a0a0f;--card:#12121a;--accent:#6366f1;--accent2:#22d3ee;--text:#e2e8f0;--muted:#64748b;--success:#22c55e}
+        :root{--bg:#0a0a0f;--card:#12121a;--accent:#6366f1;--accent2:#22d3ee;--text:#e2e8f0;--muted:#64748b;--success:#22c55e;--warn:#f59e0b;--err:#ef4444}
         *{margin:0;padding:0;box-sizing:border-box}
         body{font-family:'SF Mono','Fira Code',monospace;background:var(--bg);color:var(--text);overflow-x:hidden}
-        .hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem}
+        .hero{min-height:80vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem}
         h1{font-size:4rem;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:1rem;animation:fadeInUp 1s ease}
         .subtitle{font-size:1.2rem;color:var(--muted);margin-bottom:3rem;animation:fadeInUp 1s ease .2s both}
-        .demo-section{max-width:900px;margin:4rem auto;padding:0 2rem}
+        .demo-section{max-width:960px;margin:4rem auto;padding:0 2rem}
         .demo-title{font-size:1.8rem;color:var(--accent2);margin-bottom:2rem;text-align:center}
         .code-compare{display:grid;grid-template-columns:1fr 1fr;gap:2rem;margin-bottom:3rem}
         .code-block{background:var(--card);border-radius:12px;padding:1.5rem;border:1px solid #1e1e2e;position:relative;overflow:hidden}
         .code-block::before{content:attr(data-label);position:absolute;top:0;left:0;right:0;padding:.5rem 1rem;background:rgba(99,102,241,.1);font-size:.8rem;color:var(--accent);border-bottom:1px solid #1e1e2e}
         .code-block pre{margin-top:2rem;font-size:.85rem;line-height:1.6;overflow-x:auto}
-        .hl{color:var(--accent)}.hl2{color:var(--accent2)}.cm{color:var(--muted)}
+        .hl{color:var(--accent)}.hl2{color:var(--accent2)}.cm{color:var(--muted)}.hl3{color:var(--success)}.hl4{color:var(--warn)}.hl5{color:var(--err)}
         .binary-demo{background:var(--card);border-radius:16px;padding:2rem;border:1px solid #1e1e2e;margin:2rem 0}
-        .binary-row{display:flex;align-items:center;margin:1rem 0;gap:.5rem}
-        .binary-label{width:120px;text-align:right;color:var(--muted);font-size:.9rem}
+        .binary-row{display:flex;align-items:center;margin:1rem 0;gap:.5rem;flex-wrap:wrap}
+        .binary-label{width:140px;text-align:right;color:var(--muted);font-size:.9rem}
         .binary-bits{display:flex;gap:4px}
         .bit{width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:6px;font-size:.8rem;font-weight:700;background:#1e1e2e;border:1px solid #2e2e3e;opacity:0;transform:scale(.5);animation:bitAppear .3s ease forwards}
         .bit.active{background:var(--accent);border-color:var(--accent);color:#fff}
         .bit.zero{color:var(--muted)}
+        .bit.cont{background:rgba(99,102,241,.15);border-color:rgba(99,102,241,.3);color:var(--accent)}
+        .bit.tag{background:rgba(245,158,11,.15);border-color:rgba(245,158,11,.3);color:var(--warn)}
+        .bit.wt{background:rgba(34,211,238,.15);border-color:rgba(34,211,238,.3);color:var(--accent2)}
+        .bit.neg{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.3);color:var(--err)}
         .flow{display:flex;align-items:center;justify-content:center;gap:1rem;margin:3rem 0;flex-wrap:wrap}
         .flow-node{background:var(--card);border:2px solid #2e2e3e;border-radius:12px;padding:1.2rem 1.8rem;text-align:center;min-width:140px;opacity:0;animation:fadeInUp .6s ease forwards}
         .flow-node.active{border-color:var(--accent);box-shadow:0 0 20px rgba(99,102,241,.2)}
@@ -62,7 +66,61 @@
         .file-group h3{margin-bottom:1rem;color:var(--accent2)}
         .file-item{background:#1e1e2e;padding:.4rem 1rem;border-radius:6px;margin:.3rem 0;font-size:.85rem}
         .file-item.highlight{border:1px solid var(--accent);color:var(--accent)}
-        @media(max-width:768px){.code-compare,.file-tree{grid-template-columns:1fr;flex-direction:column}h1{font-size:2.5rem}}
+        /* Wire type table */
+        .wire-table{width:100%;border-collapse:collapse;margin:1.5rem 0;font-size:.9rem}
+        .wire-table th{background:#1e1e2e;padding:.8rem 1rem;text-align:left;border-bottom:2px solid var(--accent);color:var(--accent2)}
+        .wire-table td{padding:.8rem 1rem;border-bottom:1px solid #1e1e2e}
+        .wire-table tr:hover{background:rgba(99,102,241,.05)}
+        .wire-table code{background:#1e1e2e;padding:.2rem .5rem;border-radius:4px;font-size:.85rem}
+        /* Encoding walkthrough */
+        .walkthrough{background:var(--card);border-radius:16px;padding:2rem;border:1px solid #1e1e2e;margin:2rem 0}
+        .walk-step{display:flex;gap:1.5rem;margin:1.5rem 0;align-items:flex-start}
+        .walk-num{min-width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:var(--accent);color:#fff;font-weight:700;font-size:.9rem}
+        .walk-content{flex:1}
+        .walk-content h4{color:var(--accent2);margin-bottom:.5rem}
+        .walk-content pre{background:#0d0d14;padding:1rem;border-radius:8px;font-size:.85rem;line-height:1.6;overflow-x:auto;margin-top:.5rem}
+        .byte-row{display:flex;gap:4px;flex-wrap:wrap;margin:.5rem 0}
+        .byte-cell{display:flex;flex-direction:column;align-items:center;gap:2px}
+        .byte-val{width:40px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:4px;font-size:.75rem;font-weight:700}
+        .byte-lbl{font-size:.65rem;color:var(--muted)}
+        .legend{display:flex;gap:1.5rem;flex-wrap:wrap;margin:1rem 0;font-size:.85rem}
+        .legend-item{display:flex;align-items:center;gap:.4rem}
+        .legend-dot{width:12px;height:12px;border-radius:3px}
+        /* Tabs */
+        .tabs{display:flex;gap:4px;margin-bottom:1.5rem;background:#1e1e2e;border-radius:8px;padding:4px;flex-wrap:wrap}
+        .tab{padding:.5rem 1.2rem;border:none;background:0 0;color:var(--muted);cursor:pointer;border-radius:6px;font-family:inherit;font-size:.85rem;transition:all .3s ease}
+        .tab.active{background:var(--accent);color:#fff}
+        .tab-content{display:none}
+        .tab-content.active{display:block}
+        /* Type grid */
+        .type-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin:1.5rem 0}
+        .type-card{background:#1e1e2e;border-radius:8px;padding:1rem;border:1px solid #2e2e3e}
+        .type-card .type-name{color:var(--accent);font-weight:700;margin-bottom:.3rem}
+        .type-card .type-wire{color:var(--accent2);font-size:.8rem}
+        .type-card .type-desc{color:var(--muted);font-size:.8rem;margin-top:.3rem}
+        /* Zigzag interactive */
+        .zigzag-demo{background:var(--card);border-radius:16px;padding:2rem;border:1px solid #1e1e2e;margin:2rem 0}
+        .zigzag-input{display:flex;align-items:center;gap:1rem;justify-content:center;margin:1.5rem 0}
+        .zigzag-input input[type=range]{width:300px;accent-color:var(--accent)}
+        .zigzag-result{text-align:center;font-size:1.1rem;margin:1rem 0}
+        .zigzag-result span{font-weight:700;font-size:1.3rem}
+        /* Encoding interactive */
+        .encode-interactive{background:var(--card);border-radius:16px;padding:2rem;border:1px solid #1e1e2e;margin:2rem 0}
+        .encode-fields{display:grid;gap:1rem;margin:1.5rem 0}
+        .encode-field{display:flex;align-items:center;gap:1rem}
+        .encode-field label{min-width:100px;color:var(--muted);font-size:.9rem}
+        .encode-field input,.encode-field select{background:#1e1e2e;border:1px solid #2e2e3e;border-radius:6px;padding:.5rem .8rem;color:var(--text);font-family:inherit;font-size:.9rem;flex:1}
+        .encode-field input:focus,.encode-field select:focus{outline:none;border-color:var(--accent)}
+        .encode-btn{background:var(--accent);color:#fff;border:none;padding:.8rem 2rem;border-radius:8px;font-family:inherit;font-size:1rem;cursor:pointer;transition:all .3s ease;margin:1rem 0}
+        .encode-btn:hover{background:#4f46e5;transform:translateY(-2px)}
+        .encode-output{background:#0d0d14;border-radius:8px;padding:1.5rem;font-size:.85rem;line-height:1.8;min-height:100px;margin-top:1rem;white-space:pre-wrap;word-break:break-all}
+        .toc{background:var(--card);border-radius:12px;padding:1.5rem 2rem;border:1px solid #1e1e2e;margin:2rem auto;max-width:960px}
+        .toc h3{color:var(--accent2);margin-bottom:1rem;font-size:1.1rem}
+        .toc-list{list-style:none;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:.5rem}
+        .toc-list a{color:var(--muted);text-decoration:none;font-size:.9rem;transition:color .2s}
+        .toc-list a:hover{color:var(--accent)}
+        .toc-list a::before{content:'-> ';color:var(--accent)}
+        @media(max-width:768px){.code-compare,.file-tree{grid-template-columns:1fr;flex-direction:column}h1{font-size:2.5rem}.walk-step{flex-direction:column;gap:.5rem}.encode-field{flex-direction:column;align-items:stretch}.encode-field label{min-width:auto}}
     </style>
 </head>
 <body>
@@ -72,7 +130,28 @@
     <p class="subtitle">代替 Protobuf 的现代序列化框架 · Agent-First · 多语言 · 国际化</p>
 </section>
 
-<section class="demo-section animate-on-scroll">
+<nav class="toc animate-on-scroll">
+    <h3>目录</h3>
+    <ul class="toc-list">
+        <li><a href="#single-file">单文件 vs 散落文件</a></li>
+        <li><a href="#binary-encoding">二进制编码原理</a></li>
+        <li><a href="#wire-types">Wire Type 类型表</a></li>
+        <li><a href="#field-header">Field Header 编码</a></li>
+        <li><a href="#zigzag">Zigzag 编码</a></li>
+        <li><a href="#string-encoding">字符串 / 字节编码</a></li>
+        <li><a href="#encoding-walkthrough">完整编码走查</a></li>
+        <li><a href="#encode-interactive">在线编码体验</a></li>
+        <li><a href="#nested">Map / List 嵌套编码</a></li>
+        <li><a href="#serialization-flow">序列化流程</a></li>
+        <li><a href="#size-compare">体积对比</a></li>
+        <li><a href="#types">支持的类型</a></li>
+        <li><a href="#i18n">国际化演示</a></li>
+        <li><a href="#cli">CLI 使用</a></li>
+    </ul>
+</nav>
+
+<!-- ==================== 单文件 vs 散落文件 ==================== -->
+<section class="demo-section animate-on-scroll" id="single-file">
     <h2 class="demo-title">单文件 vs 散落文件</h2>
     <div class="single-file">
         <div class="file-tree">
@@ -120,14 +199,25 @@
     </div>
 </section>
 
-<section class="demo-section animate-on-scroll">
+<!-- ==================== 二进制编码原理 ==================== -->
+<section class="demo-section animate-on-scroll" id="binary-encoding">
     <h2 class="demo-title">二进制编码原理</h2>
     <div class="binary-demo">
-        <p style="text-align:center;color:var(--muted);margin-bottom:1.5rem">Varint 编码：小数字用更少字节</p>
+        <p style="text-align:center;color:var(--muted);margin-bottom:1.5rem">Varint 编码：小数字用更少字节，每字节 7 bit 数据 + 1 bit 标志位</p>
         <div class="binary-row">
             <span class="binary-label">值 = 1:</span>
             <div class="binary-bits" id="bits-1"></div>
             <span style="color:var(--success);margin-left:1rem">1 字节</span>
+        </div>
+        <div class="binary-row">
+            <span class="binary-label">值 = 127:</span>
+            <div class="binary-bits" id="bits-127"></div>
+            <span style="color:var(--success);margin-left:1rem">1 字节 (最大单字节值)</span>
+        </div>
+        <div class="binary-row">
+            <span class="binary-label">值 = 128:</span>
+            <div class="binary-bits" id="bits-128"></div>
+            <span style="color:var(--accent2);margin-left:1rem">2 字节 (溢出到双字节)</span>
         </div>
         <div class="binary-row">
             <span class="binary-label">值 = 300:</span>
@@ -139,32 +229,404 @@
             <div class="binary-bits" id="bits-16384"></div>
             <span style="color:var(--accent);margin-left:1rem">3 字节</span>
         </div>
+        <div class="binary-row">
+            <span class="binary-label">值 = 100000:</span>
+            <div class="binary-bits" id="bits-100000"></div>
+            <span style="color:var(--accent);margin-left:1rem">3 字节</span>
+        </div>
+        <div style="margin-top:1.5rem;padding:1rem;background:#1e1e2e;border-radius:8px;font-size:.85rem;color:var(--muted)">
+            <strong style="color:var(--accent2)">原理：</strong>
+            每字节最高位(MSB)为 1 表示后续还有字节，为 0 表示结束。
+            小数字 (0-127) 只需 1 字节，而 JSON 固定需要多个 ASCII 字符。
+        </div>
     </div>
 </section>
 
-<section class="demo-section animate-on-scroll">
+<!-- ==================== Wire Type 类型表 ==================== -->
+<section class="demo-section animate-on-scroll" id="wire-types">
+    <h2 class="demo-title">Wire Type 类型表</h2>
+    <div class="binary-demo">
+        <p style="text-align:center;color:var(--muted);margin-bottom:1.5rem">
+            每个字段的 <code style="background:#1e1e2e;padding:.2rem .5rem;border-radius:4px">Field Header</code> 由
+            <code style="background:#1e1e2e;padding:.2rem .5rem;border-radius:4px;color:var(--warn)">Tag</code> 和
+            <code style="background:#1e1e2e;padding:.2rem .5rem;border-radius:4px;color:var(--accent2)">Wire Type</code> 组成
+        </p>
+        <table class="wire-table">
+            <thead>
+                <tr><th>Wire Type</th><th>值</th><th>含义</th><th>适用类型</th><th>格式</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>Varint</code></td>
+                    <td><code>0</code></td>
+                    <td>可变长度整数</td>
+                    <td>int32, int64, uint32, uint64, sint32, sint64, bool, enum</td>
+                    <td>Tag + Varint 值</td>
+                </tr>
+                <tr>
+                    <td><code>Length-delimited</code></td>
+                    <td><code>2</code></td>
+                    <td>长度前缀数据</td>
+                    <td>string, bytes,嵌套 message, list, map</td>
+                    <td>Tag + Length(Varint) + Data</td>
+                </tr>
+            </tbody>
+        </table>
+        <div style="margin-top:1rem;padding:1rem;background:#1e1e2e;border-radius:8px;font-size:.85rem;color:var(--muted)">
+            <strong style="color:var(--accent2)">注意：</strong>
+            Wire Type 1 (64-bit) 和 Wire Type 5 (32-bit) 不在 ByteMsg 中使用。
+            ByteMsg 只用 Varint(0) 和 Length-delimited(2)，简化了解析逻辑。
+        </div>
+    </div>
+</section>
+
+<!-- ==================== Field Header 编码 ==================== -->
+<section class="demo-section animate-on-scroll" id="field-header">
+    <h2 class="demo-title">Field Header 编码</h2>
+    <div class="binary-demo">
+        <p style="text-align:center;color:var(--muted);margin-bottom:1rem">
+            Field Header = <code style="background:#1e1e2e;padding:.2rem .5rem;border-radius:4px">(Tag &lt;&lt; 3) | WireType</code>
+        </p>
+        <div class="legend" style="justify-content:center">
+            <div class="legend-item"><div class="legend-dot" style="background:var(--warn)"></div> Tag (字段编号)</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--accent2)"></div> Wire Type (类型标记)</div>
+        </div>
+        <p style="text-align:center;color:var(--muted);margin-bottom:1.5rem;font-size:.85rem">
+            示例: tag=1, wireType=0 (Varint) &rarr; (1 &lt;&lt; 3) | 0 = 8 &rarr; Varint 编码: <code style="background:#1e1e2e;padding:.1rem .4rem;border-radius:4px">08</code>
+        </p>
+        <div class="binary-row">
+            <span class="binary-label">Field 1 (Varint):</span>
+            <div class="binary-bits" id="fh-1-0"></div>
+            <span style="color:var(--muted);margin-left:1rem;font-size:.85rem">(1&lt;&lt;3)|0 = 8</span>
+        </div>
+        <div class="binary-row">
+            <span class="binary-label">Field 2 (String):</span>
+            <div class="binary-bits" id="fh-2-2"></div>
+            <span style="color:var(--muted);margin-left:1rem;font-size:.85rem">(2&lt;&lt;3)|2 = 18 = 0x12</span>
+        </div>
+        <div class="binary-row">
+            <span class="binary-label">Field 3 (Bytes):</span>
+            <div class="binary-bits" id="fh-3-2"></div>
+            <span style="color:var(--muted);margin-left:1rem;font-size:.85rem">(3&lt;&lt;3)|2 = 26 = 0x1A</span>
+        </div>
+        <div class="binary-row">
+            <span class="binary-label">Field 5 (Varint):</span>
+            <div class="binary-bits" id="fh-5-0"></div>
+            <span style="color:var(--muted);margin-left:1rem;font-size:.85rem">(5&lt;&lt;3)|0 = 40 = 0x28</span>
+        </div>
+        <div style="margin-top:1.5rem;padding:1rem;background:#1e1e2e;border-radius:8px;font-size:.85rem;color:var(--muted)">
+            <strong style="color:var(--accent2)">优势：</strong>
+            Field Header 将字段编号和类型压缩到单个 Varint 中。Tag 1-15 只需 1 字节 header，
+            比 Protobuf 的固定长度 encoding 更灵活，且向后兼容。
+        </div>
+    </div>
+</section>
+
+<!-- ==================== Zigzag 编码 ==================== -->
+<section class="demo-section animate-on-scroll" id="zigzag">
+    <h2 class="demo-title">Zigzag 编码</h2>
+    <div class="zigzag-demo">
+        <p style="text-align:center;color:var(--muted);margin-bottom:1rem">
+            将有符号整数映射为无符号整数，使 -1 和 1 都用 1 字节编码
+        </p>
+        <table class="wire-table">
+            <thead><tr><th>原始值</th><th>Zigzag 编码</th><th>Varint 字节数</th><th>说明</th></tr></thead>
+            <tbody>
+                <tr><td><code>0</code></td><td><code>0</code></td><td>1</td><td>0 &rarr; 0</td></tr>
+                <tr><td><code>-1</code></td><td><code>1</code></td><td>1</td><td>-1 &rarr; 1</td></tr>
+                <tr><td><code>1</code></td><td><code>2</code></td><td>1</td><td>1 &rarr; 2</td></tr>
+                <tr><td><code>-2</code></td><td><code>3</code></td><td>1</td><td>-2 &rarr; 3</td></tr>
+                <tr><td><code>2</code></td><td><code>4</code></td><td>1</td><td>2 &rarr; 4</td></tr>
+                <tr><td><code>-2147483648</code></td><td><code>4294967295</code></td><td>5</td><td>最小 int32 &rarr; 最大 uint32</td></tr>
+            </tbody>
+        </table>
+        <div style="margin-top:1.5rem">
+            <p style="text-align:center;color:var(--muted);margin-bottom:.5rem;font-size:.9rem">拖动滑块查看 Zigzag 编码效果:</p>
+            <div class="zigzag-input">
+                <span style="color:var(--muted);font-size:.85rem">-5</span>
+                <input type="range" id="zigzag-slider" min="-5" max="5" value="0">
+                <span style="color:var(--muted);font-size:.85rem">5</span>
+            </div>
+            <div class="zigzag-result">
+                原始值: <span id="zigzag-orig" style="color:var(--accent)">0</span>
+                &nbsp;&rarr;&nbsp;
+                Zigzag: <span id="zigzag-encoded" style="color:var(--accent2)">0</span>
+                &nbsp;&nbsp;
+                <span id="zigzag-bytes" style="color:var(--success);font-size:.9rem">(1 字节)</span>
+            </div>
+            <pre style="text-align:center;color:var(--muted);font-size:.85rem;margin-top:.5rem" id="zigzag-formula">公式: (0 &lt;&lt; 1) ^ (0 &gt;&gt; 63) = 0</pre>
+        </div>
+        <div style="margin-top:1rem;padding:1rem;background:#1e1e2e;border-radius:8px;font-size:.85rem;color:var(--muted)">
+            <strong style="color:var(--accent2)">为什么需要 Zigzag？</strong>
+            普通 Varint 对负数 (如 -1 = 0xFFFFFFFFFFFFFFFF) 需要 10 字节。
+            Zigzag 将负数映射为小正数：-1 &rarr; 1, -2 &rarr; 3，使常见负数也只需 1 字节。
+        </div>
+    </div>
+</section>
+
+<!-- ==================== 字符串 / 字节编码 ==================== -->
+<section class="demo-section animate-on-scroll" id="string-encoding">
+    <h2 class="demo-title">字符串 / 字节编码</h2>
+    <div class="binary-demo">
+        <p style="text-align:center;color:var(--muted);margin-bottom:1.5rem">
+            字符串和字节数据使用 <strong style="color:var(--accent2)">Length-delimited</strong> 格式：先写长度 (Varint)，再写数据
+        </p>
+        <div class="code-compare">
+            <div class="code-block" data-label="字符串编码">
+                <pre><span class="cm">// "Hello" 的编码</span>
+<span class="hl4">05</span>           <span class="cm">// 长度 = 5 (Varint)</span>
+<span class="hl3">48 65 6C 6C 6F</span> <span class="cm">// "Hello" (UTF-8)</span>
+
+<span class="cm">// "Hi, 世界!" 的编码</span>
+<span class="hl4">0B</span>           <span class="cm">// 长度 = 11 (Varint)</span>
+<span class="hl3">48 69 2C 20 E4B896 E7958C 21</span> <span class="cm">// UTF-8 bytes</span></pre>
+            </div>
+            <div class="code-block" data-label="字节编码 (嵌套 Message)">
+                <pre><span class="cm">// 嵌套 Message 也是 Length-delimited</span>
+<span class="cm">// 先编码子 message 到临时 buffer</span>
+<span class="cm">// 写入: Tag + Length + Buffer</span>
+
+<span class="hl4">12</span>           <span class="cm">// Field 2, WireType=2 (0x12)</span>
+<span class="hl4">08</span>           <span class="cm">// 子 message 长度 = 8</span>
+<span class="hl3">08 7B</span>        <span class="cm">// field 1: id = 123</span>
+<span class="hl3">12 05</span>        <span class="cm">// field 2: len = 5</span>
+<span class="hl3">48 65 6C 6C 6F</span> <span class="cm">// "Hello"</span></pre>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ==================== 完整编码走查 ==================== -->
+<section class="demo-section animate-on-scroll" id="encoding-walkthrough">
+    <h2 class="demo-title">完整编码走查</h2>
+    <div class="walkthrough">
+        <p style="text-align:center;color:var(--muted);margin-bottom:1.5rem">
+            将 <code style="background:#1e1e2e;padding:.2rem .5rem;border-radius:4px">{id: 123, name: "Hi"}</code> 编码为二进制
+        </p>
+
+        <div class="legend" style="justify-content:center;margin-bottom:1.5rem">
+            <div class="legend-item"><div class="legend-dot" style="background:var(--warn)"></div> Field Header</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--accent)"></div> Varint 数据</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--accent2)"></div> 字符串长度</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--success)"></div> 字符串内容</div>
+        </div>
+
+        <div class="walk-step">
+            <div class="walk-num">1</div>
+            <div class="walk-content">
+                <h4>字段 1: id = 123 (uint32, WireType=0)</h4>
+                <div class="byte-row" id="walk-step1"></div>
+                <pre>Field Header: (1 &lt;&lt; 3) | 0 = 8  → Varint 编码: 08
+Value: 123     → Varint 编码: 7B
+合: 08 7B (2 字节)</pre>
+            </div>
+        </div>
+
+        <div class="walk-step">
+            <div class="walk-num">2</div>
+            <div class="walk-content">
+                <h4>字段 2: name = "Hi" (string, WireType=2)</h4>
+                <div class="byte-row" id="walk-step2"></div>
+                <pre>Field Header: (2 &lt;&lt; 3) | 2 = 18 → Varint 编码: 12
+Length: 2      → Varint 编码: 02
+Content: "Hi"  → UTF-8: 48 69
+合: 12 02 48 69 (4 字节)</pre>
+            </div>
+        </div>
+
+        <div class="walk-step">
+            <div class="walk-num">3</div>
+            <div class="walk-content">
+                <h4>最终二进制输出</h4>
+                <div class="byte-row" id="walk-final"></div>
+                <pre>完整编码: 08 7B 12 02 48 69  (6 字节)
+
+对比 JSON: {"id":123,"name":"Hi"}  (20 字节)
+体积节省: 70%</pre>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ==================== 在线编码体验 ==================== -->
+<section class="demo-section animate-on-scroll" id="encode-interactive">
+    <h2 class="demo-title">在线编码体验</h2>
+    <div class="encode-interactive">
+        <p style="text-align:center;color:var(--muted);margin-bottom:1rem">
+            输入字段值，实时查看二进制编码过程
+        </p>
+        <div class="encode-fields">
+            <div class="encode-field">
+                <label>id (uint32):</label>
+                <input type="number" id="enc-id" value="123" min="0" max="4294967295">
+            </div>
+            <div class="encode-field">
+                <label>name (string):</label>
+                <input type="text" id="enc-name" value="Hi" maxlength="50">
+            </div>
+            <div class="encode-field">
+                <label>score (sint32):</label>
+                <input type="number" id="enc-score" value="-42" min="-2147483648" max="2147483647">
+            </div>
+        </div>
+        <div style="text-align:center">
+            <button class="encode-btn" onclick="encodeInteractive()">编码</button>
+        </div>
+        <div class="encode-output" id="enc-output">点击「编码」按钮查看结果</div>
+    </div>
+</section>
+
+<!-- ==================== Map / List 嵌套编码 ==================== -->
+<section class="demo-section animate-on-scroll" id="nested">
+    <h2 class="demo-title">Map / List 嵌套编码</h2>
+    <div class="binary-demo">
+        <div class="code-compare">
+            <div class="code-block" data-label="Schema 定义">
+                <pre><span class="hl">message</span> <span class="hl2">UserProfile</span> {
+  <span class="hl">uint32</span> id = <span class="hl2">1</span>;
+  <span class="hl">string</span> name = <span class="hl2">2</span>;
+  <span class="hl">list&lt;string&gt;</span> tags = <span class="hl2">3</span>;
+  <span class="hl">map&lt;string, string&gt;</span> meta = <span class="hl2">4</span>;
+}</pre>
+            </div>
+            <div class="code-block" data-label="编码格式">
+                <pre><span class="cm">// list&lt;T&gt; 编码:</span>
+<span class="cm">// 1. 写入所有元素到 buffer</span>
+<span class="cm">// 2. Header: Tag + WireType=2</span>
+<span class="cm">// 3. Length: buffer 长度</span>
+<span class="cm">// 4. Data: buffer 内容</span>
+
+<span class="cm">// map&lt;K,V&gt; 编码:</span>
+<span class="cm">// 等同 list&lt;map_entry&gt;</span>
+<span class="cm">// 每个 entry: key(1) + value(2)</span></pre>
+            </div>
+        </div>
+        <div class="code-block" data-label="tags = ["admin", "user"] 编码示例" style="margin-top:1.5rem">
+            <pre><span class="hl4">1A</span>                    <span class="cm">// Field 3, WireType=2 (Tag=3)</span>
+<span class="hl4">10</span>                    <span class="cm">// 总长度 = 16 字节</span>
+<span class="hl2">05</span>                    <span class="cm">// 元素数量 = 2 (list 长度)</span>
+<span class="hl3">05 61 64 6D 69 6E</span>    <span class="cm">// "admin" (长度 5 + 内容)</span>
+<span class="hl3">04 75 73 65 72</span>       <span class="cm">// "user"  (长度 4 + 内容)</span></pre>
+        </div>
+        <div class="code-block" data-label="meta = {"k":"v"} 编码示例" style="margin-top:1.5rem">
+            <pre><span class="hl4">22</span>                    <span class="cm">// Field 4, WireType=2 (Tag=4)</span>
+<span class="hl4">08</span>                    <span class="cm">// 总长度 = 8 字节</span>
+<span class="hl2">01</span>                    <span class="cm">// entry 数量 = 1</span>
+<span class="hl3">01 6B</span>                 <span class="cm">// key: "k" (长度 1 + 内容)</span>
+<span class="hl3">01 76</span>                 <span class="cm">// value: "v" (长度 1 + 内容)</span></pre>
+        </div>
+    </div>
+</section>
+
+<!-- ==================== 序列化流程 ==================== -->
+<section class="demo-section animate-on-scroll" id="serialization-flow">
     <h2 class="demo-title">序列化流程</h2>
     <div class="flow" id="flow-diagram">
-        <div class="flow-node" style="animation-delay:.2s"><div class="icon">.bmsg</div><div class="name">Schema</div><div class="label">单文件定义</div></div>
-        <div class="flow-arrow" style="animation-delay:.4s">→</div>
+        <div class="flow-node" style="animation-delay:.2s"><div class="icon">📄</div><div class="name">.bmsg</div><div class="label">单文件定义</div></div>
+        <div class="flow-arrow" style="animation-delay:.4s">&rarr;</div>
         <div class="flow-node" style="animation-delay:.6s"><div class="icon">⚙️</div><div class="name">Parser</div><div class="label">解析 AST</div></div>
-        <div class="flow-arrow" style="animation-delay:.8s">→</div>
+        <div class="flow-arrow" style="animation-delay:.8s">&rarr;</div>
         <div class="flow-node" style="animation-delay:1s"><div class="icon">🔧</div><div class="name">Codegen</div><div class="label">5 语言生成</div></div>
-        <div class="flow-arrow" style="animation-delay:1.2s">→</div>
+        <div class="flow-arrow" style="animation-delay:1.2s">&rarr;</div>
         <div class="flow-node" style="animation-delay:1.4s"><div class="icon">📦</div><div class="name">Binary</div><div class="label">紧凑编码</div></div>
+    </div>
+    <div style="text-align:center;margin-top:1.5rem">
+        <div class="code-block" data-label="编译命令" style="display:inline-block;text-align:left">
+            <pre><span class="cm"># 编译 .bmsg 为 Go 代码</span>
+$ bytemsg233 compile user.bmsg -l go -o ./gen
+
+<span class="cm"># 编译为多语言</span>
+$ bytemsg233 compile user.bmsg -l go,csharp,java -o ./gen
+
+<span class="cm"># 指定中文注释</span>
+$ bytemsg233 compile user.bmsg -l go --locale zh -o ./gen</pre>
+        </div>
     </div>
 </section>
 
-<section class="demo-section animate-on-scroll">
+<!-- ==================== 体积对比 ==================== -->
+<section class="demo-section animate-on-scroll" id="size-compare">
     <h2 class="demo-title">体积对比</h2>
     <div class="size-compare">
         <div class="size-bar"><div class="bar protobuf"></div><div class="bar-label">Protobuf</div><div class="bar-size">100 B</div></div>
         <div class="size-bar"><div class="bar json"></div><div class="bar-label">JSON</div><div class="bar-size">160 B</div></div>
         <div class="size-bar"><div class="bar bytemsg"></div><div class="bar-label">ByteMsg</div><div class="bar-size">70 B</div></div>
     </div>
+    <div class="binary-demo" style="margin-top:1.5rem">
+        <p style="text-align:center;color:var(--muted);margin-bottom:1rem">
+            同一份 UserProfile 数据 (id=12345, name="张三", email, 3 tags, 2 metadata)
+        </p>
+        <table class="wire-table">
+            <thead><tr><th>格式</th><th>体积</th><th>vs JSON</th><th>说明</th></tr></thead>
+            <tbody>
+                <tr><td><code>ByteMsg</code></td><td><strong style="color:var(--success)">~70 B</strong></td><td style="color:var(--success)">-56%</td><td>Varint + 压缩 tag</td></tr>
+                <tr><td><code>Protobuf v3</code></td><td><strong style="color:var(--accent2)">~85 B</strong></td><td style="color:var(--accent2)">-47%</td><td>类似编码，略有额外开销</td></tr>
+                <tr><td><code>MessagePack</code></td><td><strong style="color:var(--warn)">~130 B</strong></td><td style="color:var(--warn)">-19%</td><td>二进制 JSON，保留字段名</td></tr>
+                <tr><td><code>JSON</code></td><td><strong style="color:var(--err)">~160 B</strong></td><td>—</td><td>文本格式，字段名重复</td></tr>
+            </tbody>
+        </table>
+    </div>
 </section>
 
-<section class="demo-section animate-on-scroll">
+<!-- ==================== 支持的类型 ==================== -->
+<section class="demo-section animate-on-scroll" id="types">
+    <h2 class="demo-title">支持的类型</h2>
+    <div class="type-grid">
+        <div class="type-card">
+            <div class="type-name">uint32 / uint64</div>
+            <div class="type-wire">WireType: 0 (Varint)</div>
+            <div class="type-desc">无符号整数，小值高效</div>
+        </div>
+        <div class="type-card">
+            <div class="type-name">int32 / int64</div>
+            <div class="type-wire">WireType: 0 (Varint)</div>
+            <div class="type-desc">有符号整数</div>
+        </div>
+        <div class="type-card">
+            <div class="type-name">sint32 / sint64</div>
+            <div class="type-wire">WireType: 0 (Varint + Zigzag)</div>
+            <div class="type-desc">Zigzag 编码，负数高效</div>
+        </div>
+        <div class="type-card">
+            <div class="type-name">bool</div>
+            <div class="type-wire">WireType: 0 (Varint)</div>
+            <div class="type-desc">true=1, false=0</div>
+        </div>
+        <div class="type-card">
+            <div class="type-name">string</div>
+            <div class="type-wire">WireType: 2 (Length)</div>
+            <div class="type-desc">UTF-8 字符串</div>
+        </div>
+        <div class="type-card">
+            <div class="type-name">bytes</div>
+            <div class="type-wire">WireType: 2 (Length)</div>
+            <div class="type-desc">原始字节数据</div>
+        </div>
+        <div class="type-card">
+            <div class="type-name">list&lt;T&gt;</div>
+            <div class="type-wire">WireType: 2 (Length)</div>
+            <div class="type-desc">有序列表，元素可嵌套</div>
+        </div>
+        <div class="type-card">
+            <div class="type-name">map&lt;K,V&gt;</div>
+            <div class="type-wire">WireType: 2 (Length)</div>
+            <div class="type-desc">键值对，等同 list&lt;entry&gt;</div>
+        </div>
+        <div class="type-card">
+            <div class="type-name">enum</div>
+            <div class="type-wire">WireType: 0 (Varint)</div>
+            <div class="type-desc">枚举类型，值为整数</div>
+        </div>
+        <div class="type-card">
+            <div class="type-name">嵌套 message</div>
+            <div class="type-wire">WireType: 2 (Length)</div>
+            <div class="type-desc">递归嵌套结构体</div>
+        </div>
+    </div>
+</section>
+
+<!-- ==================== 国际化演示 ==================== -->
+<section class="demo-section animate-on-scroll" id="i18n">
     <h2 class="demo-title">国际化演示</h2>
     <div class="i18n-demo">
         <div class="i18n-toggle">
@@ -180,9 +642,57 @@
             <code>&nbsp;&nbsp;Name string `bytemsg:"2"`</code><br>
             <code>}</code>
         </div>
+        <p style="color:var(--muted);font-size:.85rem;margin-top:1rem">
+            .bmsg 文件中的 <code style="background:#1e1e2e;padding:.1rem .4rem;border-radius:4px">// "中文" | "English"</code>
+            语法支持双语注释，生成代码时自动切换
+        </p>
     </div>
 </section>
 
+<!-- ==================== CLI 使用 ==================== -->
+<section class="demo-section animate-on-scroll" id="cli">
+    <h2 class="demo-title">CLI 使用</h2>
+    <div class="code-compare">
+        <div class="code-block" data-label="初始化 .bmsg">
+            <pre><span class="cm"># 创建新的 schema 文件</span>
+$ bytemsg233 init myproject
+
+<span class="cm"># 自动生成 myproject.bmsg:</span>
+<span class="hl">schema:</span> bymsg/v1
+<span class="hl">package:</span> myproject
+
+<span class="hl">enum</span> Status {
+  ACTIVE = <span class="hl2">0</span>
+  INACTIVE = <span class="hl2">1</span>
+}
+
+<span class="hl">message</span> Example {
+  <span class="hl">uint32</span> id = <span class="hl2">1</span> <span class="cm">// "ID" | "ID"</span>
+  <span class="hl">string</span> name = <span class="hl2">2</span> <span class="cm">// "名称" | "Name"</span>
+}</pre>
+        </div>
+        <div class="code-block" data-label="编译 & 生成">
+            <pre><span class="cm"># 生成 Go 代码</span>
+$ bytemsg233 compile user.bmsg \
+    -l go -o ./gen
+
+<span class="cm"># 生成多语言代码</span>
+$ bytemsg233 compile user.bmsg \
+    -l go,csharp,java,typescript,python \
+    -o ./gen
+
+<span class="cm"># 中文注释</span>
+$ bytemsg233 compile user.bmsg \
+    -l go --locale zh -o ./gen
+
+<span class="cm"># 查看版本</span>
+$ bytemsg233 version
+bytemsg233 v1.0.0 (commit: abc123)</pre>
+        </div>
+    </div>
+</section>
+
+<!-- ==================== 核心特性 ==================== -->
 <section class="demo-section animate-on-scroll">
     <h2 class="demo-title">核心特性</h2>
     <div class="features">
@@ -192,35 +702,229 @@
         <div class="feature"><div class="icon">🗺️</div><h3>原生 Map/List</h3><p>深度嵌套的 map&lt;K,V&gt; 和 list&lt;T&gt; 一等公民支持</p></div>
         <div class="feature"><div class="icon">🌍</div><h3>i18n 内置</h3><p>代码注释和 CLI 输出自动中英文切换</p></div>
         <div class="feature"><div class="icon">🔌</div><h3>插件化</h3><p>自定义代码生成器，扩展目标语言</p></div>
+        <div class="feature"><div class="icon">⚡</div><h3>零依赖</h3><p>纯 Go 实现，无外部依赖，编译为单二进制</p></div>
+        <div class="feature"><div class="icon">🛡️</div><h3>类型安全</h3><p>编译期检查，生成强类型代码，杜绝运行时错误</p></div>
     </div>
 </section>
 
 <footer><p>bytemsg233 — by neko233-com · MIT License</p></footer>
 
 <script>
-const observer=new IntersectionObserver(e=>{e.forEach(i=>{if(i.isIntersecting)i.target.classList.add('visible')})},{threshold:.1});
-document.querySelectorAll('.animate-on-scroll').forEach(el=>observer.observe(el));
+// Intersection Observer for scroll animations
+const observer = new IntersectionObserver(e => {
+    e.forEach(i => { if (i.isIntersecting) i.target.classList.add('visible') });
+}, { threshold: .1 });
+document.querySelectorAll('.animate-on-scroll').forEach(el => observer.observe(el));
 
-function renderBits(id,value,bits){
-    const c=document.getElementById(id),bin=value.toString(2).padStart(bits,'0');
-    c.innerHTML='';
-    bin.split('').forEach((b,i)=>{
-        const el=document.createElement('span');
-        el.className='bit '+(b==='1'?'active':'zero');
-        el.textContent=b;el.style.animationDelay=i*.1+'s';c.appendChild(el);
+// Render varint bits
+function renderBits(id, value, bits, labels) {
+    const c = document.getElementById(id);
+    if (!c) return;
+    const bin = value.toString(2).padStart(bits, '0');
+    c.innerHTML = '';
+    bin.split('').forEach((b, i) => {
+        const el = document.createElement('span');
+        let cls = 'bit ';
+        if (labels) {
+            cls += labels[i] || (b === '1' ? 'active' : 'zero');
+        } else {
+            cls += b === '1' ? 'active' : 'zero';
+        }
+        el.className = cls;
+        el.textContent = b;
+        el.style.animationDelay = i * .05 + 's';
+        c.appendChild(el);
     });
 }
-const bo=new IntersectionObserver(e=>{e.forEach(i=>{if(i.isIntersecting){renderBits('bits-1',1,8);renderBits('bits-300',300,16);renderBits('bits-16384',16384,24);bo.unobserve(i.target)}})},{threshold:.3});
-const bd=document.querySelector('.binary-demo');if(bd)bo.observe(bd);
 
-const i18n={
-    zh:'<code>// 用户资料</code><br><code>type UserProfile struct {</code><br><code>&nbsp;&nbsp;// 用户ID</code><br><code>&nbsp;&nbsp;Id uint32 `bytemsg:"1"`</code><br><code>&nbsp;&nbsp;// 用户名</code><br><code>&nbsp;&nbsp;Name string `bytemsg:"2"`</code><br><code>}</code>',
-    en:'<code>// User Profile</code><br><code>type UserProfile struct {</code><br><code>&nbsp;&nbsp;// User ID</code><br><code>&nbsp;&nbsp;Id uint32 `bytemsg:"1"`</code><br><code>&nbsp;&nbsp;// Username</code><br><code>&nbsp;&nbsp;Name string `bytemsg:"2"`</code><br><code>}</code>'
+// Varint bits observer
+const bo = new IntersectionObserver(e => {
+    e.forEach(i => {
+        if (i.isIntersecting) {
+            renderBits('bits-1', 1, 8);
+            renderBits('bits-127', 127, 8);
+            renderBits('bits-128', 128, 16);
+            renderBits('bits-300', 300, 16);
+            renderBits('bits-16384', 16384, 16);
+            renderBits('bits-100000', 100000, 24);
+            bo.unobserve(i.target);
+        }
+    });
+}, { threshold: .3 });
+const bd = document.querySelector('.binary-demo');
+if (bd) bo.observe(bd);
+
+// Field Header bits
+const fho = new IntersectionObserver(e => {
+    e.forEach(i => {
+        if (i.isIntersecting) {
+            // (1<<3)|0 = 8 → 00001000
+            renderBits('fh-1-0', 8, 8, ['zero','zero','zero','zero','zero','active','zero','zero']);
+            // (2<<3)|2 = 18 → 00010010
+            renderBits('fh-2-2', 18, 8, ['zero','zero','zero','active','zero','zero','active','zero']);
+            // (3<<3)|2 = 26 → 00011010
+            renderBits('fh-3-2', 26, 8, ['zero','zero','zero','active','active','zero','active','zero']);
+            // (5<<3)|0 = 40 → 00101000
+            renderBits('fh-5-0', 40, 8, ['zero','zero','active','zero','active','zero','zero','zero']);
+            fho.unobserve(i.target);
+        }
+    });
+}, { threshold: .3 });
+const fhd = document.getElementById('field-header');
+if (fhd) fho.observe(fhd);
+
+// Zigzag slider
+const zigzagSlider = document.getElementById('zigzag-slider');
+if (zigzagSlider) {
+    zigzagSlider.addEventListener('input', function() {
+        const v = parseInt(this.value);
+        const encoded = (v << 1) ^ (v >> 31);
+        document.getElementById('zigzag-orig').textContent = v;
+        document.getElementById('zigzag-encoded').textContent = encoded >>> 0;
+        const bytes = (encoded >>> 0).toString(2).length;
+        const byteCount = Math.ceil(bytes / 7) || 1;
+        document.getElementById('zigzag-bytes').textContent = '(' + byteCount + ' 字节)';
+        document.getElementById('zigzag-formula').textContent =
+            '公式: (' + v + ' << 1) ^ (' + v + ' >> 31) = ' + (encoded >>> 0);
+    });
+}
+
+// Encoding walkthrough byte rows
+function renderByteRow(id, bytes) {
+    const c = document.getElementById(id);
+    if (!c) return;
+    c.innerHTML = '';
+    bytes.forEach(b => {
+        const cell = document.createElement('div');
+        cell.className = 'byte-cell';
+        const val = document.createElement('div');
+        val.className = 'byte-val';
+        val.style.background = b.bg;
+        val.style.color = b.color || '#fff';
+        val.textContent = b.hex;
+        const lbl = document.createElement('div');
+        lbl.className = 'byte-lbl';
+        lbl.textContent = b.label || '';
+        cell.appendChild(val);
+        cell.appendChild(lbl);
+        c.appendChild(cell);
+    });
+}
+
+const walkObs = new IntersectionObserver(e => {
+    e.forEach(i => {
+        if (i.isIntersecting) {
+            // Step 1: id=123 → 08 7B
+            renderByteRow('walk-step1', [
+                { hex: '08', bg: 'rgba(245,158,11,.3)', color: 'var(--warn)', label: 'Header' },
+                { hex: '7B', bg: 'rgba(99,102,241,.3)', color: 'var(--accent)', label: '=123' }
+            ]);
+            // Step 2: name="Hi" → 12 02 48 69
+            renderByteRow('walk-step2', [
+                { hex: '12', bg: 'rgba(245,158,11,.3)', color: 'var(--warn)', label: 'Header' },
+                { hex: '02', bg: 'rgba(34,211,238,.3)', color: 'var(--accent2)', label: 'Len' },
+                { hex: '48', bg: 'rgba(34,197,94,.3)', color: 'var(--success)', label: 'H' },
+                { hex: '69', bg: 'rgba(34,197,94,.3)', color: 'var(--success)', label: 'i' }
+            ]);
+            // Final
+            renderByteRow('walk-final', [
+                { hex: '08', bg: 'rgba(245,158,11,.3)', color: 'var(--warn)', label: 'Hdr' },
+                { hex: '7B', bg: 'rgba(99,102,241,.3)', color: 'var(--accent)', label: '123' },
+                { hex: '12', bg: 'rgba(245,158,11,.3)', color: 'var(--warn)', label: 'Hdr' },
+                { hex: '02', bg: 'rgba(34,211,238,.3)', color: 'var(--accent2)', label: 'Len' },
+                { hex: '48', bg: 'rgba(34,197,94,.3)', color: 'var(--success)', label: 'H' },
+                { hex: '69', bg: 'rgba(34,197,94,.3)', color: 'var(--success)', label: 'i' }
+            ]);
+            walkObs.unobserve(i.target);
+        }
+    });
+}, { threshold: .3 });
+const walkEl = document.getElementById('encoding-walkthrough');
+if (walkEl) walkObs.observe(walkEl);
+
+// Interactive encoding
+function zigzagEncode(value) {
+    return (value << 1) ^ (value >> 31);
+}
+
+function toVarint(value) {
+    const bytes = [];
+    let v = value >>> 0;
+    while (v >= 0x80) {
+        bytes.push((v & 0x7F) | 0x80);
+        v >>>= 7;
+    }
+    bytes.push(v);
+    return bytes;
+}
+
+function toHex(bytes) {
+    return bytes.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+}
+
+function encodeStr(s) {
+    const encoder = new TextEncoder();
+    return Array.from(encoder.encode(s));
+}
+
+function encodeInteractive() {
+    const id = parseInt(document.getElementById('enc-id').value) || 0;
+    const name = document.getElementById('enc-name').value;
+    const score = parseInt(document.getElementById('enc-score').value) || 0;
+
+    let output = '';
+    output += '=== 编码过程 ===\n\n';
+
+    // Field 1: id (uint32, WireType=0)
+    const fh1 = toVarint((1 << 3) | 0);
+    const idBytes = toVarint(id);
+    output += '字段 1: id = ' + id + ' (uint32, WireType=Varint)\n';
+    output += '  Field Header: (' + '1 << 3) | 0 = ' + ((1<<3)|0) + ' → ' + toHex(fh1) + '\n';
+    output += '  Value: ' + id + ' → ' + toHex(idBytes) + '\n';
+    output += '  合计: ' + toHex([...fh1, ...idBytes]) + ' (' + (fh1.length + idBytes.length) + ' 字节)\n\n';
+
+    // Field 2: name (string, WireType=2)
+    const fh2 = toVarint((2 << 3) | 2);
+    const nameBytes = encodeStr(name);
+    const nameLen = toVarint(nameBytes.length);
+    output += '字段 2: name = "' + name + '" (string, WireType=Length-delimited)\n';
+    output += '  Field Header: (' + '2 << 3) | 2 = ' + ((2<<3)|2) + ' → ' + toHex(fh2) + '\n';
+    output += '  Length: ' + nameBytes.length + ' → ' + toHex(nameLen) + '\n';
+    output += '  Content: ' + toHex(nameBytes) + '\n';
+    output += '  合计: ' + toHex([...fh2, ...nameLen, ...nameBytes]) + ' (' + (fh2.length + nameLen.length + nameBytes.length) + ' 字节)\n\n';
+
+    // Field 3: score (sint32, WireType=0, Zigzag)
+    const fh3 = toVarint((3 << 3) | 0);
+    const zigzag = zigzagEncode(score);
+    const scoreBytes = toVarint(zigzag);
+    output += '字段 3: score = ' + score + ' (sint32, WireType=Varint, Zigzag)\n';
+    output += '  Field Header: (' + '3 << 3) | 0 = ' + ((3<<3)|0) + ' → ' + toHex(fh3) + '\n';
+    output += '  Zigzag: ' + score + ' → ' + (zigzag >>> 0) + ' → ' + toHex(scoreBytes) + '\n';
+    output += '  合计: ' + toHex([...fh3, ...scoreBytes]) + ' (' + (fh3.length + scoreBytes.length) + ' 字节)\n\n';
+
+    // Total
+    const allBytes = [...fh1, ...idBytes, ...fh2, ...nameLen, ...nameBytes, ...fh3, ...scoreBytes];
+    output += '=== 最终结果 ===\n';
+    output += 'Hex: ' + toHex(allBytes) + '\n';
+    output += '总字节: ' + allBytes.length + ' B\n\n';
+
+    // JSON comparison
+    const jsonStr = JSON.stringify({ id, name, score });
+    output += '对比 JSON (' + jsonStr.length + ' B): ' + jsonStr + '\n';
+    output += '体积节省: ' + Math.round((1 - allBytes.length / jsonStr.length) * 100) + '%';
+
+    document.getElementById('enc-output').textContent = output;
+}
+
+// i18n
+const i18n = {
+    zh: '<code>// 用户资料</code><br><code>type UserProfile struct {</code><br><code>&nbsp;&nbsp;// 用户ID</code><br><code>&nbsp;&nbsp;Id uint32 `bytemsg:"1"`</code><br><code>&nbsp;&nbsp;// 用户名</code><br><code>&nbsp;&nbsp;Name string `bytemsg:"2"`</code><br><code>}</code>',
+    en: '<code>// User Profile</code><br><code>type UserProfile struct {</code><br><code>&nbsp;&nbsp;// User ID</code><br><code>&nbsp;&nbsp;Id uint32 `bytemsg:"1"`</code><br><code>&nbsp;&nbsp;// Username</code><br><code>&nbsp;&nbsp;Name string `bytemsg:"2"`</code><br><code>}</code>'
 };
-function setLang(lang,btn){
-    document.querySelectorAll('.i18n-btn').forEach(b=>b.classList.remove('active'));
+function setLang(lang, btn) {
+    document.querySelectorAll('.i18n-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    document.getElementById('i18n-output').innerHTML=i18n[lang];
+    document.getElementById('i18n-output').innerHTML = i18n[lang];
 }
 </script>
 </body>
