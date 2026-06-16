@@ -643,6 +643,15 @@
       color: var(--accent-2);
     }
 
+    .bench-ratio {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 0.72rem;
+      line-height: 1.25;
+      white-space: normal;
+    }
+
     .metric-panel {
       padding: 0;
     }
@@ -1275,10 +1284,10 @@ heroPool.return(hero)</code></pre></div>
                 <tr><th>Codec</th><th data-i18n="perf.encode">Encode</th><th data-i18n="perf.decode">Decode</th></tr>
               </thead>
               <tbody>
-                <tr><td>ByteMsg233</td><td><strong>161</strong></td><td>1087</td></tr>
-                <tr><td>Protobuf</td><td>632</td><td><strong>529</strong></td></tr>
-                <tr><td>JSON</td><td>1214</td><td>4466</td></tr>
-                <tr><td>MsgPack</td><td>1291</td><td>1499</td></tr>
+                <tr><td>ByteMsg233</td><td><strong>161</strong><span class="bench-ratio">0.25x Protobuf</span></td><td>1087<span class="bench-ratio">2.05x Protobuf</span></td></tr>
+                <tr><td>Protobuf</td><td>632<span class="bench-ratio">3.93x ByteMsg233</span></td><td><strong>529</strong><span class="bench-ratio">0.49x ByteMsg233</span></td></tr>
+                <tr><td>JSON</td><td>1214<span class="bench-ratio">7.54x ByteMsg233</span></td><td>4466<span class="bench-ratio">8.44x Protobuf</span></td></tr>
+                <tr><td>MsgPack</td><td>1291<span class="bench-ratio">8.02x ByteMsg233</span></td><td>1499<span class="bench-ratio">2.83x Protobuf</span></td></tr>
               </tbody>
             </table>
             <div class="panel-title">
@@ -1296,10 +1305,10 @@ heroPool.return(hero)</code></pre></div>
                 <tr><th>Codec</th><th data-i18n="perf.encode">Encode</th><th data-i18n="perf.decode">Decode</th></tr>
               </thead>
               <tbody>
-                <tr><td>ByteMsg233</td><td><strong>6195787</strong></td><td>919963</td></tr>
-                <tr><td>Protobuf</td><td>1583030</td><td><strong>1891790</strong></td></tr>
-                <tr><td>JSON</td><td>823723</td><td>223914</td></tr>
-                <tr><td>MsgPack</td><td>774593</td><td>667111</td></tr>
+                <tr><td>ByteMsg233</td><td><strong>6195787</strong><span class="bench-ratio">3.91x Protobuf</span></td><td>919963<span class="bench-ratio">0.49x Protobuf</span></td></tr>
+                <tr><td>Protobuf</td><td>1583030<span class="bench-ratio">0.26x ByteMsg233</span></td><td><strong>1891790</strong><span class="bench-ratio">2.06x ByteMsg233</span></td></tr>
+                <tr><td>JSON</td><td>823723<span class="bench-ratio">0.13x ByteMsg233</span></td><td>223914<span class="bench-ratio">0.12x Protobuf</span></td></tr>
+                <tr><td>MsgPack</td><td>774593<span class="bench-ratio">0.13x ByteMsg233</span></td><td>667111<span class="bench-ratio">0.35x Protobuf</span></td></tr>
               </tbody>
             </table>
             <div class="panel-title">

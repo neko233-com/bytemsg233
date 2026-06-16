@@ -66,6 +66,15 @@ The same ChatDto result as throughput. Higher `ops/s` is better.
 | JSON | 823723 | 223914 |
 | MessagePack | 774593 | 667111 |
 
+ChatDto relative view:
+
+| Codec | Encode duration | Decode duration | Encode throughput | Decode throughput |
+|---|---:|---:|---:|---:|
+| ByteMsg233 | **0.25x Protobuf** | 2.05x Protobuf | **3.91x Protobuf** | 0.49x Protobuf |
+| Protobuf | 3.93x ByteMsg233 | **0.49x ByteMsg233** | 0.26x ByteMsg233 | **2.06x ByteMsg233** |
+| JSON | 7.54x ByteMsg233 | 8.44x Protobuf | 0.13x ByteMsg233 | 0.12x Protobuf |
+| MessagePack | 8.02x ByteMsg233 | 2.83x Protobuf | 0.13x ByteMsg233 | 0.35x Protobuf |
+
 Interpretation:
 
 - Protobuf is still excellent on tiny decode cases.
