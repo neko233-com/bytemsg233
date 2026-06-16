@@ -1265,8 +1265,8 @@ heroPool.return(hero)</code></pre></div>
                 <tr><td data-i18n="perf.chat">Chat message</td><td><strong class="bench-value" data-value="57">57 B</strong></td><td><span class="bench-value" data-value="57">57 B</span></td><td><span class="bench-value" data-value="116">116 B</span></td><td><span class="bench-value" data-value="103">103 B</span></td></tr>
                 <tr><td data-i18n="perf.chatdto">ChatDto all types</td><td><strong class="bench-value" data-value="304">304 B</strong></td><td><span class="bench-value" data-value="316">316 B</span></td><td><span class="bench-value" data-value="647">647 B</span></td><td><span class="bench-value" data-value="531">531 B</span></td></tr>
                 <tr><td data-i18n="perf.battle">Battle input</td><td><strong class="bench-value" data-value="247">247 B</strong></td><td><span class="bench-value" data-value="266">266 B</span></td><td><span class="bench-value" data-value="1097">1097 B</span></td><td><span class="bench-value" data-value="931">931 B</span></td></tr>
-                <tr><td data-i18n="perf.task">TaskDto list</td><td><strong class="bench-value" data-value="3845">3845 B</strong></td><td><span class="bench-value" data-value="4044">4044 B</span></td><td><span class="bench-value" data-value="14691">14691 B</span></td><td><span class="bench-value" data-value="13303">13303 B</span></td></tr>
-                <tr><td data-i18n="perf.leaderboard">Leaderboard</td><td><strong class="bench-value" data-value="3409">3409 B</strong></td><td><span class="bench-value" data-value="3608">3608 B</span></td><td><span class="bench-value" data-value="9602">9602 B</span></td><td><span class="bench-value" data-value="8711">8711 B</span></td></tr>
+                <tr><td data-i18n="perf.task">TaskDto list</td><td><strong class="bench-value" data-value="2261">2261 B</strong></td><td><span class="bench-value" data-value="4044">4044 B</span></td><td><span class="bench-value" data-value="14691">14691 B</span></td><td><span class="bench-value" data-value="13303">13303 B</span></td></tr>
+                <tr><td data-i18n="perf.leaderboard">Leaderboard</td><td><strong class="bench-value" data-value="2518">2518 B</strong></td><td><span class="bench-value" data-value="3608">3608 B</span></td><td><span class="bench-value" data-value="9602">9602 B</span></td><td><span class="bench-value" data-value="8711">8711 B</span></td></tr>
               </tbody>
             </table>
             <div class="panel-title">
@@ -1284,10 +1284,10 @@ heroPool.return(hero)</code></pre></div>
                 <tr><th>Codec</th><th data-i18n="perf.encode">Encode</th><th data-i18n="perf.decode">Decode</th></tr>
               </thead>
               <tbody>
-                <tr><td>ByteMsg233</td><td><strong>255</strong><span class="bench-ratio">0.19x Protobuf</span></td><td><strong>597</strong><span class="bench-ratio">0.48x Protobuf</span></td></tr>
-                <tr><td>Protobuf</td><td>1322<span class="bench-ratio">5.19x ByteMsg233</span></td><td>1248<span class="bench-ratio">2.09x ByteMsg233</span></td></tr>
-                <tr><td>JSON</td><td>1695<span class="bench-ratio">6.65x ByteMsg233</span></td><td>7853<span class="bench-ratio">6.29x Protobuf</span></td></tr>
-                <tr><td>MsgPack</td><td>1497<span class="bench-ratio">5.88x ByteMsg233</span></td><td>2592<span class="bench-ratio">2.08x Protobuf</span></td></tr>
+                <tr><td>ByteMsg233</td><td><strong>214</strong><span class="bench-ratio">0.28x Protobuf</span></td><td><strong>590</strong><span class="bench-ratio">0.49x Protobuf</span></td></tr>
+                <tr><td>Protobuf</td><td>752<span class="bench-ratio">3.51x ByteMsg233</span></td><td>1205<span class="bench-ratio">2.04x ByteMsg233</span></td></tr>
+                <tr><td>JSON</td><td>1440<span class="bench-ratio">6.72x ByteMsg233</span></td><td>7646<span class="bench-ratio">6.35x Protobuf</span></td></tr>
+                <tr><td>MsgPack</td><td>1487<span class="bench-ratio">6.94x ByteMsg233</span></td><td>2387<span class="bench-ratio">1.98x Protobuf</span></td></tr>
               </tbody>
             </table>
             <div class="panel-title">
@@ -1305,15 +1305,34 @@ heroPool.return(hero)</code></pre></div>
                 <tr><th>Codec</th><th data-i18n="perf.encode">Encode</th><th data-i18n="perf.decode">Decode</th></tr>
               </thead>
               <tbody>
-                <tr><td>ByteMsg233</td><td><strong>3924647</strong><span class="bench-ratio">5.19x Protobuf</span></td><td><strong>1676165</strong><span class="bench-ratio">2.09x Protobuf</span></td></tr>
-                <tr><td>Protobuf</td><td>756430<span class="bench-ratio">0.19x ByteMsg233</span></td><td>801282<span class="bench-ratio">0.48x ByteMsg233</span></td></tr>
-                <tr><td>JSON</td><td>589971<span class="bench-ratio">0.15x ByteMsg233</span></td><td>127340<span class="bench-ratio">0.16x Protobuf</span></td></tr>
-                <tr><td>MsgPack</td><td>668003<span class="bench-ratio">0.17x ByteMsg233</span></td><td>385802<span class="bench-ratio">0.48x Protobuf</span></td></tr>
+                <tr><td>ByteMsg233</td><td><strong>4664179</strong><span class="bench-ratio">3.51x Protobuf</span></td><td><strong>1695778</strong><span class="bench-ratio">2.04x Protobuf</span></td></tr>
+                <tr><td>Protobuf</td><td>1329257<span class="bench-ratio">0.28x ByteMsg233</span></td><td>829876<span class="bench-ratio">0.49x ByteMsg233</span></td></tr>
+                <tr><td>JSON</td><td>694444<span class="bench-ratio">0.15x ByteMsg233</span></td><td>130787<span class="bench-ratio">0.16x Protobuf</span></td></tr>
+                <tr><td>MsgPack</td><td>672495<span class="bench-ratio">0.14x ByteMsg233</span></td><td>418936<span class="bench-ratio">0.49x Protobuf</span></td></tr>
               </tbody>
             </table>
             <div class="panel-title">
               <span data-i18n="perf.throughput.note">Same ChatDto benchmark, converted from ns/op so people can read how many messages fit in one second.</span>
             </div>
+          </div>
+
+          <div class="metric-panel">
+            <div class="panel-title">
+              <strong data-i18n="perf.lang.title">Language runtime matrix</strong>
+              <span data-i18n="perf.lang.note">optimized blocks</span>
+            </div>
+            <table>
+              <thead>
+                <tr><th data-i18n="perf.lang">Language</th><th data-i18n="perf.runtime">Runtime</th><th data-i18n="perf.verify">Verification</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Go</td><td>packed / delta / bitset / string / dense column</td><td>measured above</td></tr>
+                <tr><td>C# / Unity</td><td>packed / delta / bitset / string</td><td>dotnet test</td></tr>
+                <tr><td>TypeScript</td><td>packed / delta / bitset / string</td><td>npm test</td></tr>
+                <tr><td>Rust</td><td>packed / delta / bitset / string</td><td>cargo test</td></tr>
+                <tr><td>Java / Android</td><td>packed / delta / bitset / string</td><td>JDK 17 compile script</td></tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </section>
@@ -1451,6 +1470,11 @@ heroPool.return(hero)</code></pre></div>
         "perf.throughput": "Throughput",
         "perf.ops": "ops/s",
         "perf.throughput.note": "Same ChatDto benchmark, converted from ns/op so people can read how many messages fit in one second.",
+        "perf.lang.title": "Language runtime matrix",
+        "perf.lang.note": "optimized blocks",
+        "perf.lang": "Language",
+        "perf.runtime": "Runtime",
+        "perf.verify": "Verification",
         "lab.title": "See why field tags matter.",
         "lab.copy": "The payload does not repeat field names. The demo below encodes a tiny object with field headers and values, then compares it with JSON text length.",
         "lab.form.title": "Binary lab",
@@ -1543,6 +1567,11 @@ heroPool.return(hero)</code></pre></div>
         "perf.throughput": "吞吐",
         "perf.ops": "次/s",
         "perf.throughput.note": "同一组 ChatDto benchmark，从 ns/op 换算成每秒可处理多少条消息，更容易读性能差异。",
+        "perf.lang.title": "语言运行时矩阵",
+        "perf.lang.note": "优化 block",
+        "perf.lang": "语言",
+        "perf.runtime": "运行时能力",
+        "perf.verify": "验证",
         "lab.title": "字段 tag 为什么重要。",
         "lab.copy": "载荷不会重复字段名。下面 demo 会编码一个小对象，并和 JSON 文本长度对比。",
         "lab.form.title": "二进制实验",

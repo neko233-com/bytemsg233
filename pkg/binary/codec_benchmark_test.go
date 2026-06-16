@@ -920,56 +920,338 @@ func encodeInputsBmsg(inputs []BenchBattleInput) []byte {
 }
 
 func encodeLeaderboardBmsg2(entries []BenchRankEntry) []byte {
-	buf := make([]byte, 0, 4096)
+	buf := make([]byte, 0, 2048)
 	buf = AppendVarint(buf, uint64(len(entries)))
-	for _, e := range entries {
-		buf = AppendFieldHeader(buf, 1, 0)
-		buf = AppendVarint(buf, uint64(e.Rank))
-		buf = AppendFieldHeader(buf, 2, 0)
-		buf = AppendVarint(buf, e.PlayerId)
-		buf = AppendFieldHeader(buf, 3, 2)
-		buf = AppendString(buf, e.Name)
-		buf = AppendFieldHeader(buf, 4, 0)
-		buf = AppendVarint(buf, uint64(e.Level))
-		buf = AppendFieldHeader(buf, 5, 0)
-		buf = AppendVarint(buf, e.Score)
-		buf = AppendFieldHeader(buf, 6, 2)
-		buf = AppendString(buf, e.Guild)
-	}
+	buf = appendRankDeltaColumn(buf, entries)
+	buf = appendRankPlayerIDDeltaColumn(buf, entries)
+	buf = appendRankNameColumn(buf, entries)
+	buf = appendRankLevelColumn(buf, entries)
+	buf = appendRankScoreDeltaColumn(buf, entries)
+	buf = appendRankGuildColumn(buf, entries)
 	return buf
 }
 
 func encodeTasksBmsg(tasks []BenchTaskDto) []byte {
-	buf := GetBuffer()
-	defer PutBuffer(buf)
-	encodeTasksBmsgTo(buf, tasks)
-	return append([]byte(nil), buf.Bytes()...)
+	return encodeTasksBmsgColumn(tasks)
 }
 
 func encodeTasksBmsgTo(buf *bytes.Buffer, tasks []BenchTaskDto) {
 	buf.Reset()
-	enc := NewEncoder(buf)
-	enc.WriteVarint(uint64(len(tasks)))
-	for _, task := range tasks {
-		enc.WriteFieldHeader(1, 0)
-		enc.WriteVarint(uint64(task.TaskId))
-		enc.WriteFieldHeader(2, 0)
-		enc.WriteVarint(uint64(task.Type))
-		enc.WriteFieldHeader(3, 0)
-		enc.WriteVarint(uint64(task.Status))
-		enc.WriteFieldHeader(4, 0)
-		enc.WriteVarint(uint64(task.Progress))
-		enc.WriteFieldHeader(5, 0)
-		enc.WriteVarint(uint64(task.Target))
-		enc.WriteFieldHeader(6, 0)
-		enc.WriteVarint(uint64(task.RewardId))
-		enc.WriteFieldHeader(7, 0)
-		enc.WriteVarint(uint64(task.RewardCount))
-		enc.WriteFieldHeader(8, 0)
-		enc.WriteVarint(task.ExpireAt)
-		enc.WriteFieldHeader(9, 2)
-		enc.WriteString(task.Title)
+	_, _ = buf.Write(encodeTasksBmsgColumn(tasks))
+}
+
+func encodeTasksBmsgColumn(tasks []BenchTaskDto) []byte {
+	buf := make([]byte, 0, len(tasks)*24)
+	buf = AppendVarint(buf, uint64(len(tasks)))
+	buf = appendTaskIDDeltaColumn(buf, tasks)
+	buf = appendTaskTypeColumn(buf, tasks)
+	buf = appendTaskStatusColumn(buf, tasks)
+	buf = appendTaskProgressColumn(buf, tasks)
+	buf = appendTaskTargetColumn(buf, tasks)
+	buf = appendTaskRewardIDDeltaColumn(buf, tasks)
+	buf = appendTaskRewardCountColumn(buf, tasks)
+	buf = appendTaskExpireDeltaColumn(buf, tasks)
+	buf = appendTaskTitleColumn(buf, tasks)
+	return buf
+}
+
+func appendTaskIDDeltaColumn(buf []byte, tasks []BenchTaskDto) []byte {
+	buf = AppendVarint(buf, uint64(len(tasks)))
+	if len(tasks) == 0 {
+		return buf
 	}
+	prev := uint64(tasks[0].TaskId)
+	buf = AppendVarint(buf, prev)
+	for _, task := range tasks[1:] {
+		value := uint64(task.TaskId)
+		buf = AppendZigzag(buf, int64(value)-int64(prev))
+		prev = value
+	}
+	return buf
+}
+
+func appendTaskTypeColumn(buf []byte, tasks []BenchTaskDto) []byte {
+	buf = AppendVarint(buf, uint64(len(tasks)))
+	for _, task := range tasks {
+		buf = AppendVarint(buf, uint64(task.Type))
+	}
+	return buf
+}
+
+func appendTaskStatusColumn(buf []byte, tasks []BenchTaskDto) []byte {
+	buf = AppendVarint(buf, uint64(len(tasks)))
+	for _, task := range tasks {
+		buf = AppendVarint(buf, uint64(task.Status))
+	}
+	return buf
+}
+
+func appendTaskProgressColumn(buf []byte, tasks []BenchTaskDto) []byte {
+	buf = AppendVarint(buf, uint64(len(tasks)))
+	for _, task := range tasks {
+		buf = AppendVarint(buf, uint64(task.Progress))
+	}
+	return buf
+}
+
+func appendTaskTargetColumn(buf []byte, tasks []BenchTaskDto) []byte {
+	buf = AppendVarint(buf, uint64(len(tasks)))
+	for _, task := range tasks {
+		buf = AppendVarint(buf, uint64(task.Target))
+	}
+	return buf
+}
+
+func appendTaskRewardIDDeltaColumn(buf []byte, tasks []BenchTaskDto) []byte {
+	buf = AppendVarint(buf, uint64(len(tasks)))
+	if len(tasks) == 0 {
+		return buf
+	}
+	prev := uint64(tasks[0].RewardId)
+	buf = AppendVarint(buf, prev)
+	for _, task := range tasks[1:] {
+		value := uint64(task.RewardId)
+		buf = AppendZigzag(buf, int64(value)-int64(prev))
+		prev = value
+	}
+	return buf
+}
+
+func appendTaskRewardCountColumn(buf []byte, tasks []BenchTaskDto) []byte {
+	buf = AppendVarint(buf, uint64(len(tasks)))
+	for _, task := range tasks {
+		buf = AppendVarint(buf, uint64(task.RewardCount))
+	}
+	return buf
+}
+
+func appendTaskExpireDeltaColumn(buf []byte, tasks []BenchTaskDto) []byte {
+	buf = AppendVarint(buf, uint64(len(tasks)))
+	if len(tasks) == 0 {
+		return buf
+	}
+	prev := tasks[0].ExpireAt
+	buf = AppendVarint(buf, prev)
+	for _, task := range tasks[1:] {
+		value := task.ExpireAt
+		buf = AppendZigzag(buf, int64(value)-int64(prev))
+		prev = value
+	}
+	return buf
+}
+
+func appendTaskTitleColumn(buf []byte, tasks []BenchTaskDto) []byte {
+	buf = AppendVarint(buf, uint64(len(tasks)))
+	for _, task := range tasks {
+		buf = AppendString(buf, task.Title)
+	}
+	return buf
+}
+
+func appendRankDeltaColumn(buf []byte, entries []BenchRankEntry) []byte {
+	buf = AppendVarint(buf, uint64(len(entries)))
+	if len(entries) == 0 {
+		return buf
+	}
+	prev := uint64(entries[0].Rank)
+	buf = AppendVarint(buf, prev)
+	for _, entry := range entries[1:] {
+		value := uint64(entry.Rank)
+		buf = AppendZigzag(buf, int64(value)-int64(prev))
+		prev = value
+	}
+	return buf
+}
+
+func appendRankPlayerIDDeltaColumn(buf []byte, entries []BenchRankEntry) []byte {
+	buf = AppendVarint(buf, uint64(len(entries)))
+	if len(entries) == 0 {
+		return buf
+	}
+	prev := entries[0].PlayerId
+	buf = AppendVarint(buf, prev)
+	for _, entry := range entries[1:] {
+		value := entry.PlayerId
+		buf = AppendZigzag(buf, int64(value)-int64(prev))
+		prev = value
+	}
+	return buf
+}
+
+func appendRankNameColumn(buf []byte, entries []BenchRankEntry) []byte {
+	buf = AppendVarint(buf, uint64(len(entries)))
+	for _, entry := range entries {
+		buf = AppendString(buf, entry.Name)
+	}
+	return buf
+}
+
+func appendRankLevelColumn(buf []byte, entries []BenchRankEntry) []byte {
+	buf = AppendVarint(buf, uint64(len(entries)))
+	for _, entry := range entries {
+		buf = AppendVarint(buf, uint64(entry.Level))
+	}
+	return buf
+}
+
+func appendRankScoreDeltaColumn(buf []byte, entries []BenchRankEntry) []byte {
+	buf = AppendVarint(buf, uint64(len(entries)))
+	if len(entries) == 0 {
+		return buf
+	}
+	prev := entries[0].Score
+	buf = AppendVarint(buf, prev)
+	for _, entry := range entries[1:] {
+		value := entry.Score
+		buf = AppendZigzag(buf, int64(value)-int64(prev))
+		prev = value
+	}
+	return buf
+}
+
+func appendRankGuildColumn(buf []byte, entries []BenchRankEntry) []byte {
+	buf = AppendVarint(buf, uint64(len(entries)))
+	for _, entry := range entries {
+		buf = AppendString(buf, entry.Guild)
+	}
+	return buf
+}
+
+func decodeTasksBmsgColumn(data []byte) []BenchTaskDto {
+	var state benchTaskColumnDecodeState
+	return state.decode(data)
+}
+
+type benchTaskColumnDecodeState struct {
+	tasks        []BenchTaskDto
+	taskIds      []uint64
+	types        []uint64
+	statuses     []uint64
+	progresses   []uint64
+	targets      []uint64
+	rewardIds    []uint64
+	rewardCounts []uint64
+	expireAts    []uint64
+	titles       []string
+}
+
+func (s *benchTaskColumnDecodeState) decode(data []byte) []BenchTaskDto {
+	dec := NewSliceDecoder(data)
+	count, _ := dec.ReadVarint()
+	s.taskIds, _ = dec.ReadDeltaVarints(s.taskIds)
+	s.types, _ = dec.ReadPackedVarints(s.types)
+	s.statuses, _ = dec.ReadPackedVarints(s.statuses)
+	s.progresses, _ = dec.ReadPackedVarints(s.progresses)
+	s.targets, _ = dec.ReadPackedVarints(s.targets)
+	s.rewardIds, _ = dec.ReadDeltaVarints(s.rewardIds)
+	s.rewardCounts, _ = dec.ReadPackedVarints(s.rewardCounts)
+	s.expireAts, _ = dec.ReadDeltaVarints(s.expireAts)
+	s.titles, _ = dec.ReadStringList(s.titles)
+	if uint64(cap(s.tasks)) < count {
+		s.tasks = make([]BenchTaskDto, int(count))
+	} else {
+		s.tasks = s.tasks[:int(count)]
+	}
+	for i := range s.tasks {
+		s.tasks[i].TaskId = uint32(s.taskIds[i])
+		s.tasks[i].Type = uint32(s.types[i])
+		s.tasks[i].Status = uint32(s.statuses[i])
+		s.tasks[i].Progress = uint32(s.progresses[i])
+		s.tasks[i].Target = uint32(s.targets[i])
+		s.tasks[i].RewardId = uint32(s.rewardIds[i])
+		s.tasks[i].RewardCount = uint32(s.rewardCounts[i])
+		s.tasks[i].ExpireAt = s.expireAts[i]
+		s.tasks[i].Title = s.titles[i]
+	}
+	return s.tasks
+}
+
+func (s *benchTaskColumnDecodeState) prewarm(count int) {
+	s.tasks = make([]BenchTaskDto, count)
+	s.taskIds = make([]uint64, 0, count)
+	s.types = make([]uint64, 0, count)
+	s.statuses = make([]uint64, 0, count)
+	s.progresses = make([]uint64, 0, count)
+	s.targets = make([]uint64, 0, count)
+	s.rewardIds = make([]uint64, 0, count)
+	s.rewardCounts = make([]uint64, 0, count)
+	s.expireAts = make([]uint64, 0, count)
+	s.titles = make([]string, 0, count)
+}
+
+func decodeTasksProto(data []byte) []BenchTaskDto {
+	tasks := make([]BenchTaskDto, 0, 100)
+	for len(data) > 0 {
+		num, typ, n := protowire.ConsumeTag(data)
+		if n < 0 {
+			break
+		}
+		data = data[n:]
+		if num != 1 || typ != protowire.BytesType {
+			n = protowire.ConsumeFieldValue(num, typ, data)
+			if n < 0 {
+				break
+			}
+			data = data[n:]
+			continue
+		}
+		msg, n := protowire.ConsumeBytes(data)
+		if n < 0 {
+			break
+		}
+		data = data[n:]
+		var task BenchTaskDto
+		for len(msg) > 0 {
+			field, fieldType, consumed := protowire.ConsumeTag(msg)
+			if consumed < 0 {
+				break
+			}
+			msg = msg[consumed:]
+			switch fieldType {
+			case protowire.VarintType:
+				v, consumed := protowire.ConsumeVarint(msg)
+				if consumed < 0 {
+					break
+				}
+				msg = msg[consumed:]
+				switch field {
+				case 1:
+					task.TaskId = uint32(v)
+				case 2:
+					task.Type = uint32(v)
+				case 3:
+					task.Status = uint32(v)
+				case 4:
+					task.Progress = uint32(v)
+				case 5:
+					task.Target = uint32(v)
+				case 6:
+					task.RewardId = uint32(v)
+				case 7:
+					task.RewardCount = uint32(v)
+				case 8:
+					task.ExpireAt = v
+				}
+			case protowire.BytesType:
+				v, consumed := protowire.ConsumeBytes(msg)
+				if consumed < 0 {
+					break
+				}
+				msg = msg[consumed:]
+				if field == 9 {
+					task.Title = string(v)
+				}
+			default:
+				consumed = protowire.ConsumeFieldValue(field, fieldType, msg)
+				if consumed < 0 {
+					break
+				}
+				msg = msg[consumed:]
+			}
+		}
+		tasks = append(tasks, task)
+	}
+	return tasks
 }
 
 // ==================== Protobuf 编码/解码 (手动 wire format) ====================
@@ -1572,6 +1854,20 @@ func TestBenchmark_ChatDtoAllTypesRoundTrip(t *testing.T) {
 	}
 }
 
+func TestBenchmark_TaskColumnRoundTrip(t *testing.T) {
+	tasks := benchMakeTasks(100)
+	data := encodeTasksBmsgColumn(tasks)
+	got := decodeTasksBmsgColumn(data)
+	if len(got) != len(tasks) {
+		t.Fatalf("decoded task count = %d, want %d", len(got), len(tasks))
+	}
+	for i := range tasks {
+		if got[i] != tasks[i] {
+			t.Fatalf("task[%d] = %#v, want %#v", i, got[i], tasks[i])
+		}
+	}
+}
+
 // ==================== 编码 Benchmark ====================
 
 func BenchmarkEncode_Player_ByteMsg233(b *testing.B) {
@@ -1693,32 +1989,9 @@ func BenchmarkEncode_Battle_Msgpack(b *testing.B) {
 
 func BenchmarkEncode_TaskList_ByteMsg233(b *testing.B) {
 	tasks := benchMakeTasks(100)
-	dst := make([]byte, 0, len(encodeTasksBmsg(tasks)))
-	enc := NewAppendEncoderValue(dst)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		enc.Reset(dst[:0])
-		enc.WriteVarint(uint64(len(tasks)))
-		for _, task := range tasks {
-			enc.WriteFieldHeader(1, 0)
-			enc.WriteVarint(uint64(task.TaskId))
-			enc.WriteFieldHeader(2, 0)
-			enc.WriteVarint(uint64(task.Type))
-			enc.WriteFieldHeader(3, 0)
-			enc.WriteVarint(uint64(task.Status))
-			enc.WriteFieldHeader(4, 0)
-			enc.WriteVarint(uint64(task.Progress))
-			enc.WriteFieldHeader(5, 0)
-			enc.WriteVarint(uint64(task.Target))
-			enc.WriteFieldHeader(6, 0)
-			enc.WriteVarint(uint64(task.RewardId))
-			enc.WriteFieldHeader(7, 0)
-			enc.WriteVarint(uint64(task.RewardCount))
-			enc.WriteFieldHeader(8, 0)
-			enc.WriteVarint(task.ExpireAt)
-			enc.WriteFieldHeader(9, 2)
-			enc.WriteString(task.Title)
-		}
+		encodeTasksBmsgColumn(tasks)
 	}
 }
 func BenchmarkEncode_TaskList_Proto(b *testing.B) {
@@ -1898,5 +2171,42 @@ func BenchmarkDecode_Battle_JSON(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		json.Unmarshal(data, &in)
+	}
+}
+
+func BenchmarkDecode_TaskList_ByteMsg233(b *testing.B) {
+	tasks := benchMakeTasks(100)
+	data := encodeTasksBmsgColumn(tasks)
+	var state benchTaskColumnDecodeState
+	state.prewarm(len(tasks))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		state.decode(data)
+	}
+}
+
+func BenchmarkDecode_TaskList_Proto(b *testing.B) {
+	data := encodeTasksProto(benchMakeTasks(100))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		decodeTasksProto(data)
+	}
+}
+
+func BenchmarkDecode_TaskList_JSON(b *testing.B) {
+	var tasks []BenchTaskDto
+	data := encodeJSON(benchMakeTasks(100))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		json.Unmarshal(data, &tasks)
+	}
+}
+
+func BenchmarkDecode_TaskList_Msgpack(b *testing.B) {
+	var tasks []BenchTaskDto
+	data := encodeMsgpack(benchMakeTasks(100))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		msgpack.Unmarshal(data, &tasks)
 	}
 }

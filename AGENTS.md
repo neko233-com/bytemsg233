@@ -27,6 +27,10 @@
 
 - Generated code should prioritize native extension points in each target language.
 - Common target languages are part of the product roadmap, not third-party afterthoughts. Official targets should cover Go, C# / Unity, TypeScript / JavaScript, Java / Android, Rust, C++, C, Kotlin, Swift, Dart / Flutter, Lua, and Python.
+- Every official target language must support the optimized game binary block layouts: packed varint lists, packed zigzag lists, delta varint lists, bool bitsets, string lists, and schema-driven dense column lists.
+- New generated message-list hot paths should prefer schema-driven dense column layout for fixed-schema repeated DTOs, leaderboards, inventories, task lists, battle inputs, and frame batches.
+- Deeply nested generated decode must avoid avoidable copies: prefer slice/span/view subreaders, decode-into APIs, and reusable list/map/nested-message storage.
+- Optimized binary layouts are allowed to supersede older row layouts. Do not preserve old wire formats when doing so would block game hot-path performance, unless a release note explicitly requires compatibility.
 - Every target language must support normal allocation/constructor usage, such as `new Message()` or the language-native equivalent.
 - Every target language must support pool usage with a zero-GC hot-path goal after prewarm or equivalent setup.
 - Pool reset should reuse existing lists, dictionaries, arrays, nested messages, and other reusable storage where practical.

@@ -40,6 +40,46 @@ If you are new to serialization, this is the important part: a protocol format s
 | `map<K,V>` | repeated key/value entries | useful, but avoid maps in the hottest frame loops when arrays work |
 | nested message | length + message body | keeps complex packets structured |
 
+## Optimized Game Blocks
+
+The current game-first layout is allowed to use dense schema blocks instead of preserving older row-style wire layouts. The goal is simple: keep schemas general, but let repeated game traffic use the shape that CPUs and networks like.
+
+| Block | Best for | Why it helps |
+|---|---|---|
+| packed varint list | enum, level, status, count, quality columns | one count, then contiguous small integers |
+| packed zigzag list | signed coordinates and deltas | negative numbers stay compact |
+| delta varint list | rank, id, frame, timestamp, score movement | stores base + small deltas instead of full values |
+| bool bitset | flags and repeated booleans | eight booleans per byte |
+| string list | names, guilds, labels | one count, then length-prefixed strings |
+| dense column list | repeated DTOs such as tasks, inventory, leaderboard rows, battle inputs | avoids repeating field tags for every row |
+
+For example, a 100-row `TaskDto` list is encoded as schema-ordered columns:
+
+```text
+count
+task_id delta column
+type packed column
+status packed column
+progress packed column
+target packed column
+reward_id delta column
+reward_count packed column
+expire_at delta column
+title string column
+```
+
+This keeps the data general enough for generated code in every language, while avoiding the per-row tag cost that hurts large game lists.
+
+## Deep Nesting Strategy
+
+Complex packets are expected: login state, heroes with skills, inventory with item attrs, battle frames with input lists, and replay segments with frame batches. Deep nesting should be optimized by generated code, not avoided by users.
+
+- Decode nested length-delimited data through slice/span/view readers where the language supports it.
+- Decode into existing objects when possible, especially after pool prewarm.
+- Reuse list/map/nested-message storage during reset instead of throwing it away.
+- Use dense column layout independently at each repeated-message layer; do not force the whole packet into one global layout.
+- Keep a reasonable maximum nesting depth in runtime readers to protect servers from malformed input.
+
 ## Hot-Path Rules
 
 Gameplay code should be boring in the best way:
@@ -72,6 +112,7 @@ Run locally:
 ```bash
 go test ./pkg/binary -run "TestBenchmark_SizeComparison|TestGame_" -v
 go test ./pkg/binary -run ^$ -bench "Benchmark(Encode_|Game_)" -benchmem
+powershell -ExecutionPolicy Bypass -File scripts/test-java.ps1
 ```
 
 Comparison order is always:

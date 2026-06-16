@@ -225,6 +225,143 @@ func (d *SliceDecoder) ReadBytesView() ([]byte, error) {
 	return d.data[start:d.pos], nil
 }
 
+// ReadBlockView reads a length-delimited optimized block and returns a view of
+// the payload bytes after the block kind. The returned slice aliases input.
+func (d *SliceDecoder) ReadBlockView() (BlockKind, []byte, error) {
+	value, err := d.ReadBytesView()
+	if err != nil {
+		return 0, nil, err
+	}
+	if len(value) == 0 {
+		return 0, nil, io.ErrUnexpectedEOF
+	}
+	return BlockKind(value[0]), value[1:], nil
+}
+
+// ReadPackedVarints reads count-prefixed unsigned varints into dst.
+func (d *SliceDecoder) ReadPackedVarints(dst []uint64) ([]uint64, error) {
+	count, err := d.ReadVarint()
+	if err != nil {
+		return dst, err
+	}
+	if uint64(cap(dst)) < count {
+		dst = make([]uint64, 0, int(count))
+	} else {
+		dst = dst[:0]
+	}
+	for i := uint64(0); i < count; i++ {
+		value, err := d.ReadVarint()
+		if err != nil {
+			return dst, err
+		}
+		dst = append(dst, value)
+	}
+	return dst, nil
+}
+
+// ReadPackedZigzags reads count-prefixed zigzag varints into dst.
+func (d *SliceDecoder) ReadPackedZigzags(dst []int64) ([]int64, error) {
+	count, err := d.ReadVarint()
+	if err != nil {
+		return dst, err
+	}
+	if uint64(cap(dst)) < count {
+		dst = make([]int64, 0, int(count))
+	} else {
+		dst = dst[:0]
+	}
+	for i := uint64(0); i < count; i++ {
+		value, err := d.ReadZigzag()
+		if err != nil {
+			return dst, err
+		}
+		dst = append(dst, value)
+	}
+	return dst, nil
+}
+
+// ReadDeltaVarints reads count-prefixed base + delta varints into dst.
+func (d *SliceDecoder) ReadDeltaVarints(dst []uint64) ([]uint64, error) {
+	count, err := d.ReadVarint()
+	if err != nil {
+		return dst, err
+	}
+	if uint64(cap(dst)) < count {
+		dst = make([]uint64, 0, int(count))
+	} else {
+		dst = dst[:0]
+	}
+	if count == 0 {
+		return dst, nil
+	}
+	value, err := d.ReadVarint()
+	if err != nil {
+		return dst, err
+	}
+	dst = append(dst, value)
+	for i := uint64(1); i < count; i++ {
+		delta, err := d.ReadZigzag()
+		if err != nil {
+			return dst, err
+		}
+		value = uint64(int64(value) + delta)
+		dst = append(dst, value)
+	}
+	return dst, nil
+}
+
+// ReadBoolBitset reads count-prefixed packed bool values into dst.
+func (d *SliceDecoder) ReadBoolBitset(dst []bool) ([]bool, error) {
+	count, err := d.ReadVarint()
+	if err != nil {
+		return dst, err
+	}
+	if uint64(cap(dst)) < count {
+		dst = make([]bool, int(count))
+	} else {
+		dst = dst[:int(count)]
+		for i := range dst {
+			dst[i] = false
+		}
+	}
+	for i := uint64(0); i < count; i += 8 {
+		if d.pos >= len(d.data) {
+			return dst, io.ErrUnexpectedEOF
+		}
+		current := d.data[d.pos]
+		d.pos++
+		limit := uint64(8)
+		if remaining := count - i; remaining < limit {
+			limit = remaining
+		}
+		for bit := uint64(0); bit < limit; bit++ {
+			dst[int(i+bit)] = current&(1<<bit) != 0
+		}
+	}
+	return dst, nil
+}
+
+// ReadStringList reads count-prefixed strings into dst.
+func (d *SliceDecoder) ReadStringList(dst []string) ([]string, error) {
+	count, err := d.ReadVarint()
+	if err != nil {
+		return dst, err
+	}
+	if uint64(cap(dst)) < count {
+		dst = make([]string, 0, int(count))
+	} else {
+		dst = dst[:0]
+	}
+	for i := uint64(0); i < count; i++ {
+		value, err := d.ReadStringView()
+		if err != nil {
+			return dst, err
+		}
+		dst = append(dst, value)
+	}
+	return dst, nil
+}
+
 // ReadFixed32 reads a fixed-width 32-bit little-endian value.
 func (d *SliceDecoder) ReadFixed32() (uint32, error) {
 	if len(d.data)-d.pos < 4 {

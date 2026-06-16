@@ -304,6 +304,53 @@ func TestSliceDecoderReadStringView(t *testing.T) {
 	}
 }
 
+func TestOptimizedBlocksRoundTrip(t *testing.T) {
+	unsigned := []uint64{100, 101, 105, 120, 121}
+	var buf []byte
+	buf = AppendDeltaVarints(buf, unsigned)
+	dec := NewSliceDecoder(buf)
+	gotUnsigned, err := dec.ReadDeltaVarints(nil)
+	if err != nil {
+		t.Fatalf("ReadDeltaVarints failed: %v", err)
+	}
+	if len(gotUnsigned) != len(unsigned) {
+		t.Fatalf("delta len = %d, want %d", len(gotUnsigned), len(unsigned))
+	}
+	for i := range unsigned {
+		if gotUnsigned[i] != unsigned[i] {
+			t.Fatalf("delta[%d] = %d, want %d", i, gotUnsigned[i], unsigned[i])
+		}
+	}
+
+	flags := []bool{true, false, true, true, false, false, true, false, true}
+	buf = buf[:0]
+	buf = AppendBoolBitset(buf, flags)
+	dec.Reset(buf)
+	gotFlags, err := dec.ReadBoolBitset(nil)
+	if err != nil {
+		t.Fatalf("ReadBoolBitset failed: %v", err)
+	}
+	for i := range flags {
+		if gotFlags[i] != flags[i] {
+			t.Fatalf("flag[%d] = %v, want %v", i, gotFlags[i], flags[i])
+		}
+	}
+
+	strings := []string{"rank", "inventory", "battle"}
+	buf = buf[:0]
+	buf = AppendStringList(buf, strings)
+	dec.Reset(buf)
+	gotStrings, err := dec.ReadStringList(nil)
+	if err != nil {
+		t.Fatalf("ReadStringList failed: %v", err)
+	}
+	for i := range strings {
+		if gotStrings[i] != strings[i] {
+			t.Fatalf("string[%d] = %q, want %q", i, gotStrings[i], strings[i])
+		}
+	}
+}
+
 func TestBufferPoolLimit(t *testing.T) {
 	bufferPool = bufferPool[:0]
 	for i := 0; i < ByteMsgBufferPoolLimit+1; i++ {

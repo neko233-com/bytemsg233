@@ -8,6 +8,20 @@ import (
 
 const ByteMsgBufferPoolLimit = 10000
 
+// BlockKind identifies an optional length-delimited block payload layout.
+// Blocks keep the normal field header outside the payload, so old row layouts
+// can coexist with optimized list/column layouts in the same protocol.
+type BlockKind uint8
+
+const (
+	BlockPackedVarint BlockKind = 1
+	BlockPackedZigzag BlockKind = 2
+	BlockDeltaVarint  BlockKind = 3
+	BlockBoolBitset   BlockKind = 4
+	BlockStringList   BlockKind = 5
+	BlockColumnList   BlockKind = 6
+)
+
 var bufferPool = make([]*bytes.Buffer, 0, ByteMsgBufferPoolLimit)
 
 // GetBuffer gets a buffer from the pool
@@ -266,6 +280,76 @@ func AppendBytes(dst []byte, value []byte) []byte {
 // AppendFieldHeader appends a field header (tag + wire type) to dst.
 func AppendFieldHeader(dst []byte, tag int, wireType int) []byte {
 	return AppendVarint(dst, uint64(tag<<3|wireType))
+}
+
+// AppendBlockHeader appends the tag, block kind, and payload length for an
+// optimized length-delimited block. The payload itself follows immediately.
+func AppendBlockHeader(dst []byte, tag int, kind BlockKind, payloadLen int) []byte {
+	dst = AppendFieldHeader(dst, tag, 2)
+	dst = AppendVarint(dst, uint64(payloadLen+1))
+	return append(dst, byte(kind))
+}
+
+// AppendPackedVarints appends count-prefixed unsigned varints.
+func AppendPackedVarints(dst []byte, values []uint64) []byte {
+	dst = AppendVarint(dst, uint64(len(values)))
+	for _, value := range values {
+		dst = AppendVarint(dst, value)
+	}
+	return dst
+}
+
+// AppendPackedZigzags appends count-prefixed zigzag varints.
+func AppendPackedZigzags(dst []byte, values []int64) []byte {
+	dst = AppendVarint(dst, uint64(len(values)))
+	for _, value := range values {
+		dst = AppendZigzag(dst, value)
+	}
+	return dst
+}
+
+// AppendDeltaVarints appends count-prefixed unsigned varints as base + deltas.
+// It is useful for ranks, ids, frames, timestamps, and other monotonic lists.
+func AppendDeltaVarints(dst []byte, values []uint64) []byte {
+	dst = AppendVarint(dst, uint64(len(values)))
+	if len(values) == 0 {
+		return dst
+	}
+	prev := values[0]
+	dst = AppendVarint(dst, prev)
+	for _, value := range values[1:] {
+		dst = AppendZigzag(dst, int64(value)-int64(prev))
+		prev = value
+	}
+	return dst
+}
+
+// AppendBoolBitset appends count-prefixed bool values packed into bits.
+func AppendBoolBitset(dst []byte, values []bool) []byte {
+	dst = AppendVarint(dst, uint64(len(values)))
+	var current byte
+	for i, value := range values {
+		if value {
+			current |= 1 << uint(i&7)
+		}
+		if i&7 == 7 {
+			dst = append(dst, current)
+			current = 0
+		}
+	}
+	if len(values)&7 != 0 {
+		dst = append(dst, current)
+	}
+	return dst
+}
+
+// AppendStringList appends count-prefixed strings.
+func AppendStringList(dst []byte, values []string) []byte {
+	dst = AppendVarint(dst, uint64(len(values)))
+	for _, value := range values {
+		dst = AppendString(dst, value)
+	}
+	return dst
 }
 
 // ZigzagEncode converts int64 to uint64 using zigzag encoding

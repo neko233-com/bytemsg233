@@ -169,8 +169,8 @@ Read this table as a practical game/client baseline, not as a tiny-object trick.
 | Chat message, 5 fields | 57 B | 57 B | 116 B | 103 B |
 | ChatDto all types | 304 B | 316 B | 647 B | 531 B |
 | Battle input, 10 players | 247 B | 266 B | 1097 B | 931 B |
-| TaskDto list, 100 rows | 3845 B | 4044 B | 14691 B | 13303 B |
-| Leaderboard, 100 rows | 3409 B | 3608 B | 9602 B | 8711 B |
+| TaskDto list, 100 rows | 2261 B | 4044 B | 14691 B | 13303 B |
+| Leaderboard, 100 rows | 2518 B | 3608 B | 9602 B | 8711 B |
 
 Game-specific benchmark coverage also includes login/full-state pushes and realtime battle frames.
 
@@ -190,6 +190,14 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/bench-docker.ps1
 ```
 
 This runs Go codec benchmarks against Protobuf/JSON/MessagePack, game benchmarks, TypeScript tests, Rust tests, C# runtime tests, and Java 17 `javac` checks for runtime plus generated code. Logs are written under `bench-results/`.
+
+Java runtime compile and smoke checks are intentionally easy:
+
+```bash
+powershell -ExecutionPolicy Bypass -File scripts/test-java.ps1
+```
+
+The script uses local JDK 17 when available, or a pre-pulled `eclipse-temurin:17-jdk` Docker image.
 
 Full notes: [docs/BENCHMARK.md](docs/BENCHMARK.md). Game packet design: [docs/GAME_BINARY.md](docs/GAME_BINARY.md).
 
