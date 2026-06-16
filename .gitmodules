@@ -1,0 +1,12 @@
+[submodule "editors/vscode"]
+	path = editors/vscode
+	url = https://github.com/neko233-com/bytemsg233-plugin-vscode.git
+[submodule "editors/jetbrains"]
+	path = editors/jetbrains
+	url = https://github.com/neko233-com/bytemsg233-plugin-jetbrains.git
+[submodule "libs/csharp"]
+	path = libs/csharp
+	url = https://github.com/neko233-com/bytemsg233-lib-csharp.git
+[submodule "libs/typescript"]
+	path = libs/typescript
+	url = https://github.com/neko233-com/bytemsg233-lib-typescript.git

@@ -105,6 +105,19 @@ message Hero {
 - 开发者文档：[docs/使用文档.md](docs/使用文档.md)
 - 在线演示页源码：[docs/demo/index.html](docs/demo/index.html)
 
+## 子仓库
+
+主仓库通过 Git submodule 统一挂载各端接入库和编辑器插件：
+
+- `libs/typescript`: https://github.com/neko233-com/bytemsg233-lib-typescript
+- `libs/csharp`: https://github.com/neko233-com/bytemsg233-lib-csharp
+- `editors/vscode`: https://github.com/neko233-com/bytemsg233-plugin-vscode
+- `editors/jetbrains`: https://github.com/neko233-com/bytemsg233-plugin-jetbrains
+
+```bash
+git submodule update --init --recursive
+```
+
 ## 开发
 
 ```bash

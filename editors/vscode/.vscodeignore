@@ -1,7 +1,0 @@
-.github/**
-.gitignore
-node_modules/**
-src/**
-test/**
-**/*.map
-**/*.ts
