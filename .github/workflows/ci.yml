@@ -114,7 +114,11 @@ jobs:
           go build -ldflags="-s -w" -trimpath -o bytemsg233 ./cmd/bytemsg233
           ./bytemsg233 version
           ./bytemsg233 init test-schema
-          ./bytemsg233 compile test-schema.bmsg --lang go --lang csharp --lang typescript
+          ./bytemsg233 compile test-schema.bmsg.json --lang go --lang csharp --lang typescript --lang rust --lang java -o ./generated
+          ./bytemsg233 export test-schema.bmsg.json --format md,html,bmsg -o ./protocol-docs
+          test -f ./protocol-docs/test-schema.md
+          test -f ./protocol-docs/test-schema.html
+          test -f ./protocol-docs/test-schema.bmsg
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

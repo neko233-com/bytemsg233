@@ -30,7 +30,7 @@ bytemsg233 compile game.bmsg.json \
   -l go,csharp,typescript,rust,java \
   -o ./gen
 
-bytemsg233 export game.bmsg.json -f md,bmsg -o ./protocol
+bytemsg233 export game.bmsg.json -f md,html,bmsg -o ./protocol
 ```
 
 Install a runtime library by copying it into your project:
@@ -107,12 +107,13 @@ YAML is still supported for teams that prefer it, and legacy `.bmsg` can be expo
 ## Export Protocol Docs
 
 ```bash
-bytemsg233 export game.bmsg.json -f md,bmsg -o ./protocol
+bytemsg233 export game.bmsg.json -f md,html,bmsg -o ./protocol
 ```
 
 This writes:
 
 - `game.md`: human-readable protocol documentation for client/server integration.
+- `game.html`: standalone user-facing protocol page.
 - `game.bmsg`: legacy/extension-friendly DSL export.
 
 Markdown is for people. HTML demo pages are standalone. Neither should depend on the other as a required reading path.

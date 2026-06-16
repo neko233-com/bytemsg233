@@ -127,6 +127,11 @@ func main() {
 					if err := os.WriteFile(path, exporter.Markdown(s), 0644); err != nil {
 						return err
 					}
+				case "html":
+					path := filepath.Join(outputDir, baseName+".html")
+					if err := os.WriteFile(path, exporter.HTML(s), 0644); err != nil {
+						return err
+					}
 				case "bmsg":
 					path := filepath.Join(outputDir, baseName+".bmsg")
 					if err := os.WriteFile(path, exporter.Bmsg(s), 0644); err != nil {
@@ -139,7 +144,7 @@ func main() {
 			return nil
 		},
 	}
-	exportCmd.Flags().StringSliceP("format", "f", []string{"md", "bmsg"}, "Export formats (md, bmsg)")
+	exportCmd.Flags().StringSliceP("format", "f", []string{"md", "html", "bmsg"}, "Export formats (md, html, bmsg)")
 	exportCmd.Flags().StringP("output", "o", ".", "Output directory")
 	exportCmd.Flags().String("name", "", "Output base name")
 
