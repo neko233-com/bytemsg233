@@ -4,26 +4,36 @@ import (
 	"bytes"
 	"encoding/binary"
 	"io"
-	"sync"
 )
 
-var bufferPool = sync.Pool{
-	New: func() any { return new(bytes.Buffer) },
-}
+const ByteMsgBufferPoolLimit = 10000
+
+var bufferPool = make(chan *bytes.Buffer, ByteMsgBufferPoolLimit)
 
 // GetBuffer gets a buffer from the pool
 func GetBuffer() *bytes.Buffer {
-	buf := bufferPool.Get().(*bytes.Buffer)
-	buf.Reset()
-	return buf
+	select {
+	case buf := <-bufferPool:
+		buf.Reset()
+		return buf
+	default:
+		return new(bytes.Buffer)
+	}
 }
 
 // PutBuffer returns a buffer to the pool
 func PutBuffer(buf *bytes.Buffer) {
+	if buf == nil {
+		return
+	}
 	if buf.Cap() > 64*1024 {
 		return
 	}
-	bufferPool.Put(buf)
+	buf.Reset()
+	select {
+	case bufferPool <- buf:
+	default:
+	}
 }
 
 // Encoder writes binary data
