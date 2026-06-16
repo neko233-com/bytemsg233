@@ -103,6 +103,7 @@ func (g *Generator) generateImports(buf *strings.Builder, features generatorFeat
 		"\"encoding/binary\"",
 		"\"fmt\"",
 		"\"io\"",
+		"\"strconv\"",
 		"bytemsgBinary \"github.com/neko233-com/bytemsg233/pkg/binary\"",
 	}
 	if features.Floats {
@@ -231,6 +232,10 @@ func (g *Generator) generateWireHelpers(buf *strings.Builder, features generator
 	buf.WriteString("\treturn 0\n")
 	buf.WriteString("}\n\n")
 
+	buf.WriteString("func byteMsgAppendTextInt(dst []byte, value int64) []byte {\n")
+	buf.WriteString("\treturn strconv.AppendInt(dst, value, 10)\n")
+	buf.WriteString("}\n\n")
+
 	buf.WriteString("func byteMsgUnexpectedWireType(field string, got int, want int) error {\n")
 	buf.WriteString("\treturn fmt.Errorf(\"bytemsg233: field %s wire type mismatch: got %d want %d\", field, got, want)\n")
 	buf.WriteString("}\n\n")
@@ -330,7 +335,11 @@ func (g *Generator) generateMessage(buf *strings.Builder, s *schema.Schema, name
 	}
 
 	g.generateMarshalMethods(buf, s, name, msg)
-	return g.generateUnmarshalMethods(buf, s, name, msg)
+	if err := g.generateUnmarshalMethods(buf, s, name, msg); err != nil {
+		return err
+	}
+	g.generateTextMethods(buf, s, name, msg)
+	return nil
 }
 
 func (g *Generator) generateMarshalMethods(buf *strings.Builder, s *schema.Schema, name string, msg *schema.Message) {
@@ -583,6 +592,82 @@ func (g *Generator) generateReadNestedValue(buf *strings.Builder, s *schema.Sche
 		case "bytes":
 			buf.WriteString(fmt.Sprintf("%s%s, err := %s.ReadBytes()\n%sif err != nil {\n%s\treturn err\n%s}\n", indent, valueName, decoderName, indent, indent, indent))
 			buf.WriteString(fmt.Sprintf("%s%s = %s\n", indent, targetExpr, valueName))
+		}
+	}
+}
+
+func (g *Generator) generateTextMethods(buf *strings.Builder, s *schema.Schema, name string, msg *schema.Message) {
+	buf.WriteString(fmt.Sprintf("func (x *%s) AppendByteMsgText(dst []byte) []byte {\n", name))
+	buf.WriteString("\tif x == nil {\n")
+	buf.WriteString(fmt.Sprintf("\t\treturn append(dst, %q...)\n", name+"<nil>"))
+	buf.WriteString("\t}\n")
+	buf.WriteString(fmt.Sprintf("\tdst = append(dst, %q...)\n", name+"{"))
+	for index, fieldName := range codegen.SortedFieldNames(msg) {
+		field := msg.Fields[fieldName]
+		spec, _ := g.typeSpec(s, field.Type)
+		goName := codegen.ToPascalCase(fieldName)
+		if index > 0 {
+			buf.WriteString("\tdst = append(dst, ',')\n")
+		}
+		buf.WriteString(fmt.Sprintf("\tdst = append(dst, %q...)\n", goName+":"))
+		g.generateAppendTextValue(buf, spec, "x."+goName, "\t", name+goName)
+	}
+	buf.WriteString("\tdst = append(dst, '}')\n")
+	buf.WriteString("\treturn dst\n")
+	buf.WriteString("}\n\n")
+
+	buf.WriteString(fmt.Sprintf("func (x *%s) ByteMsgText() string {\n", name))
+	buf.WriteString("\treturn string(x.AppendByteMsgText(nil))\n")
+	buf.WriteString("}\n\n")
+}
+
+func (g *Generator) generateAppendTextValue(buf *strings.Builder, spec *typeSpec, valueExpr string, indent string, prefix string) {
+	switch spec.Kind {
+	case typeList:
+		itemName := prefix + "TextItem"
+		indexName := prefix + "TextIndex"
+		buf.WriteString(fmt.Sprintf("%sdst = append(dst, '[')\n", indent))
+		buf.WriteString(fmt.Sprintf("%sfor %s, %s := range %s {\n", indent, indexName, itemName, valueExpr))
+		buf.WriteString(fmt.Sprintf("%s\tif %s > 0 {\n%s\t\tdst = append(dst, ',')\n%s\t}\n", indent, indexName, indent, indent))
+		g.generateAppendTextValue(buf, spec.Value, itemName, indent+"\t", prefix+"Item")
+		buf.WriteString(fmt.Sprintf("%s}\n", indent))
+		buf.WriteString(fmt.Sprintf("%sdst = append(dst, ']')\n", indent))
+	case typeMap:
+		keyName := prefix + "TextKey"
+		valueName := prefix + "TextValue"
+		firstName := prefix + "TextFirst"
+		buf.WriteString(fmt.Sprintf("%sdst = append(dst, '{')\n", indent))
+		buf.WriteString(fmt.Sprintf("%s%s := true\n", indent, firstName))
+		buf.WriteString(fmt.Sprintf("%sfor %s, %s := range %s {\n", indent, keyName, valueName, valueExpr))
+		buf.WriteString(fmt.Sprintf("%s\tif !%s {\n%s\t\tdst = append(dst, ',')\n%s\t}\n", indent, firstName, indent, indent))
+		buf.WriteString(fmt.Sprintf("%s\t%s = false\n", indent, firstName))
+		g.generateAppendTextValue(buf, spec.Key, keyName, indent+"\t", prefix+"Key")
+		buf.WriteString(fmt.Sprintf("%s\tdst = append(dst, ':')\n", indent))
+		g.generateAppendTextValue(buf, spec.Value, valueName, indent+"\t", prefix+"Value")
+		buf.WriteString(fmt.Sprintf("%s}\n", indent))
+		buf.WriteString(fmt.Sprintf("%sdst = append(dst, '}')\n", indent))
+	case typeMessage:
+		buf.WriteString(fmt.Sprintf("%sdst = %s.AppendByteMsgText(dst)\n", indent, valueExpr))
+	case typeEnum:
+		buf.WriteString(fmt.Sprintf("%sdst = strconv.AppendInt(dst, int64(%s), 10)\n", indent, valueExpr))
+	default:
+		switch spec.Raw {
+		case "bool":
+			buf.WriteString(fmt.Sprintf("%sdst = strconv.AppendBool(dst, %s)\n", indent, valueExpr))
+		case "int32", "int64":
+			buf.WriteString(fmt.Sprintf("%sdst = strconv.AppendInt(dst, int64(%s), 10)\n", indent, valueExpr))
+		case "uint32", "uint64":
+			buf.WriteString(fmt.Sprintf("%sdst = strconv.AppendUint(dst, uint64(%s), 10)\n", indent, valueExpr))
+		case "float32":
+			buf.WriteString(fmt.Sprintf("%sdst = strconv.AppendFloat(dst, float64(%s), 'g', -1, 32)\n", indent, valueExpr))
+		case "float64":
+			buf.WriteString(fmt.Sprintf("%sdst = strconv.AppendFloat(dst, %s, 'g', -1, 64)\n", indent, valueExpr))
+		case "string":
+			buf.WriteString(fmt.Sprintf("%sdst = strconv.AppendQuote(dst, %s)\n", indent, valueExpr))
+		case "bytes":
+			buf.WriteString(fmt.Sprintf("%sdst = append(dst, \"bytes(len=\"...)\n", indent))
+			buf.WriteString(fmt.Sprintf("%sdst = strconv.AppendInt(dst, int64(len(%s)), 10)\n", indent, valueExpr))
+			buf.WriteString(fmt.Sprintf("%sdst = append(dst, ')')\n", indent))
 		}
 	}
 }

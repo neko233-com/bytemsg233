@@ -230,6 +230,7 @@ const generatedGoRoundTripTest = `package protocol
 import (
 	"bytes"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -270,6 +271,23 @@ func TestGeneratedRoundTripAndRegistry(t *testing.T) {
 	}
 	if !ReleaseByteMsgPacket(1002, packet) {
 		t.Fatalf("release packet id 1002 failed")
+	}
+
+	text := string(source.AppendByteMsgText(make([]byte, 0, 512)))
+	if !strings.Contains(text, "Player{") || !strings.Contains(text, "Id:42") || !strings.Contains(text, "Inner{") {
+		t.Fatalf("debug text missing fields: %s", text)
+	}
+
+	textBuf := make([]byte, 0, 1024)
+	allocs := testing.AllocsPerRun(1000, func() {
+		dst := textBuf[:0]
+		dst = source.AppendByteMsgText(dst)
+		if len(dst) == 0 {
+			panic("empty text")
+		}
+	})
+	if allocs != 0 {
+		t.Fatalf("AppendByteMsgText allocs = %v, want 0", allocs)
 	}
 }
 
