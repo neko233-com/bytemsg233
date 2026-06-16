@@ -12,7 +12,7 @@ import (
 func Markdown(s *schema.Schema) []byte {
 	var buf strings.Builder
 
-	buf.WriteString("# ByteMsg Protocol\n\n")
+	buf.WriteString("# ByteMsg233 Protocol\n\n")
 	buf.WriteString(fmt.Sprintf("- Schema: `%s`\n", s.Version))
 	buf.WriteString(fmt.Sprintf("- Package: `%s`\n\n", s.Package))
 
@@ -69,7 +69,7 @@ func Markdown(s *schema.Schema) []byte {
 
 func HTML(s *schema.Schema) []byte {
 	md := string(Markdown(s))
-	title := "ByteMsg Protocol"
+	title := "ByteMsg233 Protocol"
 	if s.Package != "" {
 		title = s.Package + " Protocol"
 	}

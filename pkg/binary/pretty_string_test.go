@@ -1,7 +1,6 @@
 package binary
 
 import (
-	"reflect"
 	"strings"
 	"testing"
 )
@@ -21,7 +20,7 @@ type prettyMessage struct {
 	Inner   prettyInner         `json:"inner"`
 }
 
-func TestPrettyStringRoundTrip(t *testing.T) {
+func TestPrettyStringDebugOutput(t *testing.T) {
 	source := prettyMessage{
 		ID:      42,
 		Active:  true,
@@ -38,23 +37,13 @@ func TestPrettyStringRoundTrip(t *testing.T) {
 		t.Fatalf("MarshalPrettyString: %v", err)
 	}
 	if !strings.Contains(pretty, "\n  \"id\": 42") {
-		t.Fatalf("pretty string missing json field name: %s", pretty)
+		t.Fatalf("debug text missing json field name: %s", pretty)
 	}
 	if !strings.Contains(pretty, "\"key\": false") || !strings.Contains(pretty, "\"payload\": \"AQID\"") {
-		t.Fatalf("pretty string missing map entries or bytes: %s", pretty)
+		t.Fatalf("debug text missing map entries or bytes: %s", pretty)
 	}
 
-	var target prettyMessage
-	if err := UnmarshalPrettyString(pretty, &target); err != nil {
-		t.Fatalf("UnmarshalPrettyString: %v", err)
-	}
-	if !reflect.DeepEqual(source, target) {
-		t.Fatalf("roundtrip mismatch:\nsource=%#v\ntarget=%#v", source, target)
-	}
-}
-
-func TestPrettyStringRejectsNilTarget(t *testing.T) {
-	if err := UnmarshalPrettyString("{}", nil); err == nil {
-		t.Fatalf("UnmarshalPrettyString nil target succeeded")
+	if strings.Contains(pretty, "Unmarshal") {
+		t.Fatalf("debug output must not advertise string deserialization: %s", pretty)
 	}
 }

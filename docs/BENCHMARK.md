@@ -1,6 +1,6 @@
 # Performance
 
-> Go benchmark snapshot · Windows amd64 · AMD Ryzen 9 7900X3D
+> Go benchmark snapshot · Windows amd64 · AMD Ryzen 9 9950X
 
 This page explains what the numbers mean, not just who wins a table.
 
@@ -28,9 +28,9 @@ Payload size matters most when the same shape repeats: rankings, inventory rows,
 | Player profile, 10 fields | **61 B** | 61 B | 173 B | 155 B |
 | Chat message, 5 fields | **57 B** | 57 B | 116 B | 103 B |
 | ChatDto all types, list/map/custom | **304 B** | 316 B | 647 B | 531 B |
-| Battle input, 10 players x 8 fields | **247 B** | 266 B | 1,097 B | 931 B |
-| TaskDto list, 100 rows x 9 fields | **3,845 B** | 4,044 B | 14,691 B | 13,303 B |
-| Leaderboard, 100 rows x 6 fields | **3,409 B** | 3,608 B | 9,602 B | 8,711 B |
+| Battle input, 10 players x 8 fields | **247 B** | 266 B | 1097 B | 931 B |
+| TaskDto list, 100 rows x 9 fields | **3845 B** | 4044 B | 14691 B | 13303 B |
+| Leaderboard, 100 rows x 6 fields | **3409 B** | 3608 B | 9602 B | 8711 B |
 
 Savings versus other codecs:
 
@@ -53,22 +53,23 @@ These values are duration. Lower `ns/op` is better.
 |---|---:|---:|---:|---:|
 | Player profile | 140 | **90** | 387 | 513 |
 | Chat message | 154 | **107** | 317 | 375 |
-| ChatDto all types | 1,112 | **845** | 1,359 | 1,433 |
-| Battle input | **979** | 2,030 | 2,836 | 3,994 |
-| Leaderboard | **9,277** | 26,729 | 21,990 | 52,826 |
+| ChatDto all types | **161** | 632 | 1214 | 1291 |
+| Battle input | **979** | 2030 | 2836 | 3994 |
+| Leaderboard | **9277** | 26729 | 21990 | 52826 |
 
 The same ChatDto result as throughput. Higher `ops/s` is better.
 
 | Codec | Encode ops/s | Decode ops/s |
 |---|---:|---:|
-| ByteMsg233 | 899,281 | 660,502 |
-| Protobuf | **1,183,152** | **1,511,259** |
-| JSON | 735,835 | 209,073 |
-| MessagePack | 697,837 | 672,948 |
+| ByteMsg233 | **6195787** | 919963 |
+| Protobuf | 1583030 | **1891790** |
+| JSON | 823723 | 223914 |
+| MessagePack | 774593 | 667111 |
 
 Interpretation:
 
-- Protobuf is still excellent on tiny encode cases.
+- Protobuf is still excellent on tiny decode cases.
+- ByteMsg233 encode uses the append hot path: caller-owned buffer, precomputed nested sizes, no temporary nested buffers, `0 B/op`.
 - ByteMsg233 pulls ahead when repeated structures dominate.
 - JSON and MessagePack pay for dynamic object shape and field-name-heavy data.
 
@@ -78,10 +79,10 @@ Decode numbers are a baseline. Generated fast paths and pool-aware decoders are 
 
 | Scenario | ByteMsg233 | Protobuf | JSON | MessagePack |
 |---|---:|---:|---:|---:|
-| Player profile | 279 | **104** | 1,636 | 612 |
+| Player profile | 279 | **104** | 1636 | 612 |
 | Chat message | 224 | **86** | 969 | 349 |
-| ChatDto all types | 1,514 | **662** | 4,783 | 1,486 |
-| Battle input | 1,001 | - | 172 | **90** |
+| ChatDto all types | 1087 | **529** | 4466 | 1499 |
+| Battle input | 1001 | - | 172 | **90** |
 
 ## Allocations
 
@@ -163,4 +164,4 @@ ByteMsg233 is strongest when the project needs all of these at once:
 - generated APIs that feel native in Go, C#, Java, TypeScript, Rust, C++, C, Kotlin, Swift, Dart, Lua, and Python;
 - object pooling for client-heavy workloads;
 - JSON schema files that are readable in normal editors;
-- debug-friendly pretty string helpers outside the hot path.
+- debug-friendly text output outside the hot path.

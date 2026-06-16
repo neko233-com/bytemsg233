@@ -2,6 +2,7 @@ package binary
 
 import (
 	"bytes"
+	"encoding/binary"
 	"encoding/json"
 	"math"
 	"sort"
@@ -10,6 +11,8 @@ import (
 	"github.com/vmihailenco/msgpack/v5"
 	"google.golang.org/protobuf/encoding/protowire"
 )
+
+var benchChatArgKeys = []string{"boss_id", "map", "phase", "voice"}
 
 // ==================== 共享数据结构 ====================
 
@@ -389,6 +392,241 @@ func encodeChatDtoBmsg(c BenchChatDto) []byte {
 	enc.WriteFieldHeader(16, 2)
 	enc.WriteBytes(encodeChatReplyBmsg(c.Reply))
 	return append([]byte(nil), buf.Bytes()...)
+}
+
+func encodeChatDtoBmsgAppend(dst []byte, c BenchChatDto) []byte {
+	dst = appendHeaderRaw(dst, 1, 0)
+	dst = appendVarintRaw(dst, c.MsgId)
+	dst = appendHeaderRaw(dst, 2, 0)
+	dst = appendVarintRaw(dst, uint64(c.Channel))
+	senderSize := chatSenderBmsgSize(c.Sender)
+	dst = appendHeaderRaw(dst, 3, 2)
+	dst = appendVarintRaw(dst, uint64(senderSize))
+	dst = appendChatSenderBmsgRaw(dst, c.Sender)
+	dst = appendHeaderRaw(dst, 4, 2)
+	dst = appendStringRaw(dst, c.Content)
+	dst = appendHeaderRaw(dst, 5, 2)
+	dst = appendStringRaw(dst, c.Lang)
+	dst = appendHeaderRaw(dst, 6, 0)
+	dst = appendVarintRaw(dst, ZigzagEncode(c.CreatedAt))
+	if c.Edited {
+		dst = appendHeaderRaw(dst, 7, 0)
+		dst = appendVarintRaw(dst, 1)
+	}
+	dst = appendHeaderRaw(dst, 8, 0)
+	dst = appendVarintRaw(dst, ZigzagEncode(int64(c.Priority)))
+	dst = appendHeaderRaw(dst, 9, 5)
+	dst = appendFixed32Raw(dst, math.Float32bits(c.Heat))
+	dst = appendHeaderRaw(dst, 10, 1)
+	dst = appendFixed64Raw(dst, math.Float64bits(c.Score))
+	dst = appendHeaderRaw(dst, 11, 2)
+	dst = appendBytesRaw(dst, c.Raw)
+	tagsSize := stringListBmsgPayloadSize(c.Tags)
+	dst = appendHeaderRaw(dst, 12, 2)
+	dst = appendVarintRaw(dst, uint64(tagsSize))
+	dst = appendStringListBmsgRaw(dst, c.Tags)
+	mentionsSize := uint64ListBmsgPayloadSize(c.Mentions)
+	dst = appendHeaderRaw(dst, 13, 2)
+	dst = appendVarintRaw(dst, uint64(mentionsSize))
+	dst = appendUint64ListBmsgRaw(dst, c.Mentions)
+	argsSize := stringMapBmsgPayloadSize(c.Args)
+	dst = appendHeaderRaw(dst, 14, 2)
+	dst = appendVarintRaw(dst, uint64(argsSize))
+	dst = appendStringMapBmsgRaw(dst, c.Args)
+	itemsSize := chatItemsBmsgPayloadSize(c.Items)
+	dst = appendHeaderRaw(dst, 15, 2)
+	dst = appendVarintRaw(dst, uint64(itemsSize))
+	dst = appendChatItemsBmsgRaw(dst, c.Items)
+	replySize := chatReplyBmsgSize(c.Reply)
+	dst = appendHeaderRaw(dst, 16, 2)
+	dst = appendVarintRaw(dst, uint64(replySize))
+	dst = appendChatReplyBmsgRaw(dst, c.Reply)
+	return dst
+}
+
+func appendChatSenderBmsgRaw(dst []byte, s BenchChatSender) []byte {
+	dst = appendHeaderRaw(dst, 1, 0)
+	dst = appendVarintRaw(dst, s.Uid)
+	dst = appendHeaderRaw(dst, 2, 2)
+	dst = appendStringRaw(dst, s.Name)
+	dst = appendHeaderRaw(dst, 3, 0)
+	dst = appendVarintRaw(dst, uint64(s.Level))
+	dst = appendHeaderRaw(dst, 4, 0)
+	dst = appendVarintRaw(dst, uint64(s.Vip))
+	dst = appendHeaderRaw(dst, 5, 2)
+	dst = appendStringRaw(dst, s.Guild)
+	if s.Online {
+		dst = appendHeaderRaw(dst, 6, 0)
+		dst = appendVarintRaw(dst, 1)
+	}
+	return dst
+}
+
+func appendChatReplyBmsgRaw(dst []byte, r BenchChatReply) []byte {
+	dst = appendHeaderRaw(dst, 1, 0)
+	dst = appendVarintRaw(dst, r.MsgId)
+	dst = appendHeaderRaw(dst, 2, 2)
+	dst = appendStringRaw(dst, r.Summary)
+	return dst
+}
+
+func appendChatItemsBmsgRaw(dst []byte, items []BenchChatItem) []byte {
+	dst = appendVarintRaw(dst, uint64(len(items)))
+	for _, item := range items {
+		itemSize := chatItemBmsgSize(item)
+		dst = appendVarintRaw(dst, uint64(itemSize))
+		dst = appendChatItemBmsgRaw(dst, item)
+	}
+	return dst
+}
+
+func appendChatItemBmsgRaw(dst []byte, item BenchChatItem) []byte {
+	dst = appendHeaderRaw(dst, 1, 0)
+	dst = appendVarintRaw(dst, uint64(item.ItemId))
+	dst = appendHeaderRaw(dst, 2, 0)
+	dst = appendVarintRaw(dst, uint64(item.Count))
+	if item.Rare {
+		dst = appendHeaderRaw(dst, 3, 0)
+		dst = appendVarintRaw(dst, 1)
+	}
+	return dst
+}
+
+func appendStringListBmsgRaw(dst []byte, values []string) []byte {
+	dst = appendVarintRaw(dst, uint64(len(values)))
+	for _, value := range values {
+		dst = appendStringRaw(dst, value)
+	}
+	return dst
+}
+
+func appendUint64ListBmsgRaw(dst []byte, values []uint64) []byte {
+	dst = appendVarintRaw(dst, uint64(len(values)))
+	for _, value := range values {
+		dst = appendVarintRaw(dst, value)
+	}
+	return dst
+}
+
+func appendStringMapBmsgRaw(dst []byte, values map[string]string) []byte {
+	dst = appendVarintRaw(dst, uint64(len(values)))
+	for _, key := range benchChatArgKeys {
+		dst = appendStringRaw(dst, key)
+		dst = appendStringRaw(dst, values[key])
+	}
+	return dst
+}
+
+func appendHeaderRaw(dst []byte, tag int, wireType int) []byte {
+	return appendVarintRaw(dst, uint64(tag<<3|wireType))
+}
+
+func appendVarintRaw(dst []byte, value uint64) []byte {
+	var buf [binary.MaxVarintLen64]byte
+	n := binary.PutUvarint(buf[:], value)
+	return append(dst, buf[:n]...)
+}
+
+func appendStringRaw(dst []byte, value string) []byte {
+	dst = appendVarintRaw(dst, uint64(len(value)))
+	return append(dst, value...)
+}
+
+func appendBytesRaw(dst []byte, value []byte) []byte {
+	dst = appendVarintRaw(dst, uint64(len(value)))
+	return append(dst, value...)
+}
+
+func appendFixed32Raw(dst []byte, value uint32) []byte {
+	var buf [4]byte
+	binary.LittleEndian.PutUint32(buf[:], value)
+	return append(dst, buf[:]...)
+}
+
+func appendFixed64Raw(dst []byte, value uint64) []byte {
+	var buf [8]byte
+	binary.LittleEndian.PutUint64(buf[:], value)
+	return append(dst, buf[:]...)
+}
+
+func chatSenderBmsgSize(s BenchChatSender) int {
+	size := fieldVarintSize(1, s.Uid)
+	size += fieldStringSize(2, s.Name)
+	size += fieldVarintSize(3, uint64(s.Level))
+	size += fieldVarintSize(4, uint64(s.Vip))
+	size += fieldStringSize(5, s.Guild)
+	if s.Online {
+		size += fieldVarintSize(6, 1)
+	}
+	return size
+}
+
+func chatReplyBmsgSize(r BenchChatReply) int {
+	return fieldVarintSize(1, r.MsgId) + fieldStringSize(2, r.Summary)
+}
+
+func chatItemBmsgSize(item BenchChatItem) int {
+	size := fieldVarintSize(1, uint64(item.ItemId))
+	size += fieldVarintSize(2, uint64(item.Count))
+	if item.Rare {
+		size += fieldVarintSize(3, 1)
+	}
+	return size
+}
+
+func chatItemsBmsgPayloadSize(items []BenchChatItem) int {
+	size := benchVarintSize(uint64(len(items)))
+	for _, item := range items {
+		itemSize := chatItemBmsgSize(item)
+		size += benchVarintSize(uint64(itemSize)) + itemSize
+	}
+	return size
+}
+
+func stringListBmsgPayloadSize(values []string) int {
+	size := benchVarintSize(uint64(len(values)))
+	for _, value := range values {
+		size += stringSize(value)
+	}
+	return size
+}
+
+func uint64ListBmsgPayloadSize(values []uint64) int {
+	size := benchVarintSize(uint64(len(values)))
+	for _, value := range values {
+		size += benchVarintSize(value)
+	}
+	return size
+}
+
+func stringMapBmsgPayloadSize(values map[string]string) int {
+	size := benchVarintSize(uint64(len(values)))
+	for _, key := range benchChatArgKeys {
+		size += stringSize(key)
+		size += stringSize(values[key])
+	}
+	return size
+}
+
+func fieldVarintSize(tag int, value uint64) int {
+	return benchVarintSize(uint64(tag<<3|0)) + benchVarintSize(value)
+}
+
+func fieldStringSize(tag int, value string) int {
+	return benchVarintSize(uint64(tag<<3|2)) + stringSize(value)
+}
+
+func stringSize(value string) int {
+	return benchVarintSize(uint64(len(value))) + len(value)
+}
+
+func benchVarintSize(value uint64) int {
+	size := 1
+	for value >= 0x80 {
+		value >>= 7
+		size++
+	}
+	return size
 }
 
 func encodeChatSenderBmsg(s BenchChatSender) []byte {
@@ -1327,7 +1565,12 @@ func TestBenchmark_SizeComparison(t *testing.T) {
 
 func TestBenchmark_ChatDtoAllTypesRoundTrip(t *testing.T) {
 	chat := benchMakeChatDto()
-	bmsg := decodeChatDtoBmsg(encodeChatDtoBmsg(chat))
+	bmsgBytes := encodeChatDtoBmsg(chat)
+	appendBytes := encodeChatDtoBmsgAppend(make([]byte, 0, len(bmsgBytes)), chat)
+	if !bytes.Equal(bmsgBytes, appendBytes) {
+		t.Fatalf("ByteMsg233 append ChatDto bytes mismatch: %d != %d", len(appendBytes), len(bmsgBytes))
+	}
+	bmsg := decodeChatDtoBmsg(appendBytes)
 	proto := decodeChatDtoProto(encodeChatDtoProto(chat))
 	if bmsg.MsgId != chat.MsgId || bmsg.Sender.Uid != chat.Sender.Uid || len(bmsg.Tags) != len(chat.Tags) || len(bmsg.Args) != len(chat.Args) || len(bmsg.Items) != len(chat.Items) {
 		t.Fatalf("ByteMsg233 ChatDto all-types roundtrip mismatch: %#v", bmsg)
@@ -1399,9 +1642,10 @@ func BenchmarkEncode_Chat_Msgpack(b *testing.B) {
 
 func BenchmarkEncode_ChatDtoAllTypes_ByteMsg233(b *testing.B) {
 	c := benchMakeChatDto()
+	dst := make([]byte, 0, len(encodeChatDtoBmsg(c)))
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		encodeChatDtoBmsg(c)
+		_ = encodeChatDtoBmsgAppend(dst[:0], c)
 	}
 }
 func BenchmarkEncode_ChatDtoAllTypes_Proto(b *testing.B) {

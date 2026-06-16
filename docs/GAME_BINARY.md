@@ -47,7 +47,7 @@ Gameplay code should be boring in the best way:
 - Encode into a caller-owned buffer when possible.
 - Reuse decoder state between packets.
 - Reuse lists, arrays, maps, and nested messages when returning objects to a pool.
-- Keep pretty string, JSON export, logs, and debug views out of the gameplay hot path.
+- Keep debug text, JSON export, logs, and debug views out of the gameplay hot path.
 - Avoid reflection and dynamic map-shaped objects in generated encode/decode.
 
 Normal allocation is still supported. You can use `new Hero()` / `Hero{}` / `Hero()` when that is the clearest code. The pool path exists for update loops, battle sync, and other places where GC spikes hurt.
@@ -85,7 +85,7 @@ Comparison order is always:
 
 Use ByteMsg233 when you want readable schema files and compact runtime traffic at the same time.
 
-Use pretty string when debugging a bad packet.
+Use debug text only when inspecting a bad packet.
 
 Use JSON export when talking to tools, logs, or designers.
 

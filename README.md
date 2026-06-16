@@ -113,14 +113,14 @@ YAML is still supported for teams that prefer it, and legacy `.bmsg` can be expo
 
 Official runtime repositories are tracked in [docs/LANGUAGES.md](docs/LANGUAGES.md).
 
-Go generated messages also support official pretty string conversion for tools, logs, and fixtures:
+Go generated messages also support debug text output for tools, logs, and fixture inspection:
 
 ```go
-pretty, err := hero.MarshalByteMsgPrettyString()
-err = hero.UnmarshalByteMsgPrettyString(pretty)
+text := hero.ByteMsgText()
+dst := hero.AppendByteMsgText(buf[:0])
 ```
 
-The pretty string format is indented JSON using schema field names; maps use `key` / `value` entries so every supported map key type round-trips.
+Debug text uses schema field names and is intentionally outside the binary protocol. Do not use it as a wire format. Hot-path gameplay/network code should stay fully binary and use caller-owned buffers.
 
 C# / Unity generated messages are `partial class` by default. Keep custom gameplay helpers in separate partial files; regenerated protocol code can then be replaced safely. Use `Prewarm` during loading to make pool-backed `Rent` / `Return` flows allocation-free in gameplay hot paths.
 
@@ -160,9 +160,9 @@ Read this table as a practical game/client baseline, not as a tiny-object trick.
 | Player profile, 10 fields | 61 B | 61 B | 173 B | 155 B |
 | Chat message, 5 fields | 57 B | 57 B | 116 B | 103 B |
 | ChatDto all types | 304 B | 316 B | 647 B | 531 B |
-| Battle input, 10 players | 247 B | 266 B | 1,097 B | 931 B |
-| TaskDto list, 100 rows | 3,845 B | 4,044 B | 14,691 B | 13,303 B |
-| Leaderboard, 100 rows | 3,409 B | 3,608 B | 9,602 B | 8,711 B |
+| Battle input, 10 players | 247 B | 266 B | 1097 B | 931 B |
+| TaskDto list, 100 rows | 3845 B | 4044 B | 14691 B | 13303 B |
+| Leaderboard, 100 rows | 3409 B | 3608 B | 9602 B | 8711 B |
 
 Game-specific benchmark coverage also includes login/full-state pushes and realtime battle frames.
 

@@ -100,11 +100,11 @@ func TestGoGenerator(t *testing.T) {
 	if !strings.Contains(content, "func (x *UserProfile) Reset()") {
 		t.Error("Expected reset method")
 	}
-	if !strings.Contains(content, "func (x *UserProfile) MarshalByteMsgPrettyString() (string, error)") {
-		t.Error("Expected pretty string marshal helper")
+	if strings.Contains(content, "Marshal"+"ByteMsgPrettyString") || strings.Contains(content, "Unmarshal"+"ByteMsgPrettyString") {
+		t.Error("Pretty string marshal/unmarshal helpers must not be generated")
 	}
-	if !strings.Contains(content, "func (x *UserProfile) UnmarshalByteMsgPrettyString(value string) error") {
-		t.Error("Expected pretty string unmarshal helper")
+	if !strings.Contains(content, "func (x *UserProfile) AppendByteMsgText(dst []byte) []byte") {
+		t.Error("Expected debug text append helper")
 	}
 }
 
@@ -302,19 +302,8 @@ func TestGeneratedRoundTripAndRegistry(t *testing.T) {
 		t.Fatalf("AppendByteMsgText allocs = %v, want 0", allocs)
 	}
 
-	pretty, err := source.MarshalByteMsgPrettyString()
-	if err != nil {
-		t.Fatalf("pretty marshal: %v", err)
-	}
-	if !strings.Contains(pretty, "\n  \"id\": 42") || !strings.Contains(pretty, "\"inner\": {") {
-		t.Fatalf("pretty string missing expected JSON shape: %s", pretty)
-	}
-	var fromPretty Player
-	if err := fromPretty.UnmarshalByteMsgPrettyString(pretty); err != nil {
-		t.Fatalf("pretty unmarshal: %v", err)
-	}
-	if !reflect.DeepEqual(source, &fromPretty) {
-		t.Fatalf("pretty roundtrip mismatch:\nsource=%#v\ntarget=%#v", source, fromPretty)
+	if strings.Contains(text, "Marshal"+"ByteMsgPrettyString") || strings.Contains(text, "Unmarshal"+"ByteMsgPrettyString") {
+		t.Fatalf("debug text must not expose string serialization APIs: %s", text)
 	}
 }
 
