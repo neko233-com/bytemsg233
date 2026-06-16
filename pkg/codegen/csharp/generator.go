@@ -31,7 +31,6 @@ func (g *Generator) Generate(s *schema.Schema, options *codegen.GenerateOptions)
 	}
 
 	buf.WriteString("using System;\n")
-	buf.WriteString("using System.Collections.Concurrent;\n")
 	buf.WriteString("using System.Collections.Generic;\n\n")
 	buf.WriteString(fmt.Sprintf("namespace %s\n{\n", namespace))
 
@@ -48,7 +47,7 @@ func (g *Generator) Generate(s *schema.Schema, options *codegen.GenerateOptions)
 	buf.WriteString("}\n")
 
 	return []*codegen.GeneratedFile{
-		{Path: "Types" + g.FileExtension(), Content: []byte(buf.String())},
+		{Path: "ByteMsg233_Export" + g.FileExtension(), Content: []byte(buf.String())},
 	}, nil
 }
 
@@ -109,9 +108,10 @@ func (g *Generator) generateClass(buf *strings.Builder, s *schema.Schema, name s
 		}
 	}
 
-	buf.WriteString(fmt.Sprintf("%spublic sealed class %s\n", indentStr, name))
+	buf.WriteString(fmt.Sprintf("%spublic partial class %s\n", indentStr, name))
 	buf.WriteString(fmt.Sprintf("%s{\n", indentStr))
-	buf.WriteString(fmt.Sprintf("%s\tprivate static readonly ConcurrentBag<%s> Pool = new();\n\n", indentStr, name))
+	buf.WriteString(fmt.Sprintf("%s\tprivate static readonly Stack<%s> Pool = new Stack<%s>();\n", indentStr, name, name))
+	buf.WriteString(fmt.Sprintf("%s\tprivate static readonly object PoolLock = new object();\n\n", indentStr))
 
 	for _, fieldName := range codegen.SortedFieldNames(msg) {
 		field := msg.Fields[fieldName]
@@ -132,21 +132,42 @@ func (g *Generator) generateClass(buf *strings.Builder, s *schema.Schema, name s
 	buf.WriteString("\n")
 	buf.WriteString(fmt.Sprintf("%s\tpublic static %s Rent()\n", indentStr, name))
 	buf.WriteString(fmt.Sprintf("%s\t{\n", indentStr))
-	buf.WriteString(fmt.Sprintf("%s\t\tif (Pool.TryTake(out var value))\n", indentStr))
+	buf.WriteString(fmt.Sprintf("%s\t\tlock (PoolLock)\n", indentStr))
 	buf.WriteString(fmt.Sprintf("%s\t\t{\n", indentStr))
-	buf.WriteString(fmt.Sprintf("%s\t\t\treturn value;\n", indentStr))
+	buf.WriteString(fmt.Sprintf("%s\t\t\tif (Pool.Count > 0)\n", indentStr))
+	buf.WriteString(fmt.Sprintf("%s\t\t\t{\n", indentStr))
+	buf.WriteString(fmt.Sprintf("%s\t\t\t\treturn Pool.Pop();\n", indentStr))
+	buf.WriteString(fmt.Sprintf("%s\t\t\t}\n", indentStr))
 	buf.WriteString(fmt.Sprintf("%s\t\t}\n\n", indentStr))
 	buf.WriteString(fmt.Sprintf("%s\t\treturn new %s();\n", indentStr, name))
 	buf.WriteString(fmt.Sprintf("%s\t}\n\n", indentStr))
 
-	buf.WriteString(fmt.Sprintf("%s\tpublic static void Return(%s? value)\n", indentStr, name))
+	buf.WriteString(fmt.Sprintf("%s\tpublic static void Prewarm(int count)\n", indentStr))
 	buf.WriteString(fmt.Sprintf("%s\t{\n", indentStr))
-	buf.WriteString(fmt.Sprintf("%s\t\tif (value is null)\n", indentStr))
+	buf.WriteString(fmt.Sprintf("%s\t\tif (count <= 0)\n", indentStr))
+	buf.WriteString(fmt.Sprintf("%s\t\t{\n", indentStr))
+	buf.WriteString(fmt.Sprintf("%s\t\t\treturn;\n", indentStr))
+	buf.WriteString(fmt.Sprintf("%s\t\t}\n\n", indentStr))
+	buf.WriteString(fmt.Sprintf("%s\t\tlock (PoolLock)\n", indentStr))
+	buf.WriteString(fmt.Sprintf("%s\t\t{\n", indentStr))
+	buf.WriteString(fmt.Sprintf("%s\t\t\twhile (Pool.Count < count)\n", indentStr))
+	buf.WriteString(fmt.Sprintf("%s\t\t\t{\n", indentStr))
+	buf.WriteString(fmt.Sprintf("%s\t\t\t\tPool.Push(new %s());\n", indentStr, name))
+	buf.WriteString(fmt.Sprintf("%s\t\t\t}\n", indentStr))
+	buf.WriteString(fmt.Sprintf("%s\t\t}\n", indentStr))
+	buf.WriteString(fmt.Sprintf("%s\t}\n\n", indentStr))
+
+	buf.WriteString(fmt.Sprintf("%s\tpublic static void Return(%s value)\n", indentStr, name))
+	buf.WriteString(fmt.Sprintf("%s\t{\n", indentStr))
+	buf.WriteString(fmt.Sprintf("%s\t\tif (value == null)\n", indentStr))
 	buf.WriteString(fmt.Sprintf("%s\t\t{\n", indentStr))
 	buf.WriteString(fmt.Sprintf("%s\t\t\treturn;\n", indentStr))
 	buf.WriteString(fmt.Sprintf("%s\t\t}\n\n", indentStr))
 	buf.WriteString(fmt.Sprintf("%s\t\tvalue.Reset();\n", indentStr))
-	buf.WriteString(fmt.Sprintf("%s\t\tPool.Add(value);\n", indentStr))
+	buf.WriteString(fmt.Sprintf("%s\t\tlock (PoolLock)\n", indentStr))
+	buf.WriteString(fmt.Sprintf("%s\t\t{\n", indentStr))
+	buf.WriteString(fmt.Sprintf("%s\t\t\tPool.Push(value);\n", indentStr))
+	buf.WriteString(fmt.Sprintf("%s\t\t}\n", indentStr))
 	buf.WriteString(fmt.Sprintf("%s\t}\n\n", indentStr))
 
 	buf.WriteString(fmt.Sprintf("%s\tpublic void Release()\n", indentStr))
@@ -159,7 +180,7 @@ func (g *Generator) generateClass(buf *strings.Builder, s *schema.Schema, name s
 	for _, fieldName := range codegen.SortedFieldNames(msg) {
 		field := msg.Fields[fieldName]
 		csharpName := codegen.ToPascalCase(fieldName)
-		buf.WriteString(fmt.Sprintf("%s\t\t%s = %s;\n", indentStr, csharpName, g.defaultValueExpr(s, field.Type)))
+		buf.WriteString(g.resetStatement(s, field.Type, csharpName, indentStr+"\t\t"))
 	}
 	buf.WriteString(fmt.Sprintf("%s\t}\n", indentStr))
 	buf.WriteString(fmt.Sprintf("%s}\n", indentStr))
@@ -221,17 +242,38 @@ func (g *Generator) defaultValueExpr(s *schema.Schema, schemaType string) string
 		return "Array.Empty<byte>()"
 	default:
 		if strings.HasPrefix(schemaType, "list<") {
-			return "new()"
+			return fmt.Sprintf("new %s()", g.mapType(schemaType))
 		}
 		if strings.HasPrefix(schemaType, "map<") {
-			return "new()"
+			return fmt.Sprintf("new %s()", g.mapType(schemaType))
+		}
+		if _, ok := s.Messages[schemaType]; ok {
+			return fmt.Sprintf("new %s()", g.mapType(schemaType))
 		}
 		if enum, ok := s.Enums[schemaType]; ok {
 			if value, exists := codegen.DefaultEnumValue(enum); exists {
 				return fmt.Sprintf("%s.%s", schemaType, codegen.ToPascalCase(value.Name))
 			}
 		}
-		return fmt.Sprintf("default(%s)!", g.mapType(schemaType))
+		return fmt.Sprintf("default(%s)", g.mapType(schemaType))
+	}
+}
+
+func (g *Generator) resetStatement(s *schema.Schema, schemaType string, csharpName string, indent string) string {
+	switch schemaType {
+	case "bool", "int32", "int64", "uint32", "uint64", "float32", "float64", "string", "bytes":
+		return fmt.Sprintf("%s%s = %s;\n", indent, csharpName, g.defaultValueExpr(s, schemaType))
+	default:
+		if strings.HasPrefix(schemaType, "list<") || strings.HasPrefix(schemaType, "map<") {
+			return fmt.Sprintf("%s%s.Clear();\n", indent, csharpName)
+		}
+		if _, ok := s.Enums[schemaType]; ok {
+			return fmt.Sprintf("%s%s = %s;\n", indent, csharpName, g.defaultValueExpr(s, schemaType))
+		}
+		if _, ok := s.Messages[schemaType]; ok {
+			return fmt.Sprintf("%sif (%s == null)\n%s{\n%s\t%s = new %s();\n%s}\n%selse\n%s{\n%s\t%s.Reset();\n%s}\n", indent, csharpName, indent, indent, csharpName, g.mapType(schemaType), indent, indent, indent, indent, csharpName, indent)
+		}
+		return fmt.Sprintf("%s%s = %s;\n", indent, csharpName, g.defaultValueExpr(s, schemaType))
 	}
 }
 

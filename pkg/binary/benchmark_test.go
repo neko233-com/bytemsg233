@@ -97,12 +97,12 @@ func TestSizeComparison(t *testing.T) {
 	t.Logf("========================================")
 	t.Logf("  ByteMsg:     %3d bytes", len(bmsgData))
 	t.Logf("  Protobuf v3: %3d bytes (理论值)", protoSize)
-	t.Logf("  MessagePack: %3d bytes", len(msgpackData))
 	t.Logf("  JSON:        %3d bytes", len(jsonData))
+	t.Logf("  MessagePack: %3d bytes", len(msgpackData))
 	t.Logf("========================================")
 	t.Logf("  ByteMsg / Protobuf = %.1f%%", float64(len(bmsgData))/float64(protoSize)*100)
-	t.Logf("  ByteMsg / MsgPack  = %.1f%%", float64(len(bmsgData))/float64(len(msgpackData))*100)
 	t.Logf("  ByteMsg / JSON     = %.1f%%", float64(len(bmsgData))/float64(len(jsonData))*100)
+	t.Logf("  ByteMsg / MsgPack  = %.1f%%", float64(len(bmsgData))/float64(len(msgpackData))*100)
 	t.Logf("========================================")
 
 	// Verify roundtrip
@@ -175,12 +175,12 @@ func TestSizeComparisonBatch(t *testing.T) {
 	t.Logf("========================================")
 	t.Logf("  ByteMsg:     %3d bytes", bmsgBuf.Len())
 	t.Logf("  Protobuf v3: %3d bytes (理论值)", protoSize)
-	t.Logf("  MessagePack: %3d bytes", len(msgpackData))
 	t.Logf("  JSON:        %3d bytes", len(jsonData))
+	t.Logf("  MessagePack: %3d bytes", len(msgpackData))
 	t.Logf("========================================")
 	t.Logf("  ByteMsg / Protobuf = %.1f%%", float64(bmsgBuf.Len())/float64(protoSize)*100)
-	t.Logf("  ByteMsg / MsgPack  = %.1f%%", float64(bmsgBuf.Len())/float64(len(msgpackData))*100)
 	t.Logf("  ByteMsg / JSON     = %.1f%%", float64(bmsgBuf.Len())/float64(len(jsonData))*100)
+	t.Logf("  ByteMsg / MsgPack  = %.1f%%", float64(bmsgBuf.Len())/float64(len(msgpackData))*100)
 	t.Logf("========================================")
 	t.Logf("  节省 vs JSON:      %.1f%%", (1-float64(bmsgBuf.Len())/float64(len(jsonData)))*100)
 	t.Logf("  节省 vs MsgPack:   %.1f%%", (1-float64(bmsgBuf.Len())/float64(len(msgpackData)))*100)
@@ -233,18 +233,18 @@ func TestSizeComparisonIntensive(t *testing.T) {
 	t.Logf("========================================")
 	t.Logf("  ByteMsg:     %3d bytes", bmsgBuf.Len())
 	t.Logf("  Protobuf v3: %3d bytes (理论值)", protoSize)
-	t.Logf("  MessagePack: %3d bytes", len(msgpackData))
 	t.Logf("  JSON:        %3d bytes", len(jsonData))
+	t.Logf("  MessagePack: %3d bytes", len(msgpackData))
 	t.Logf("========================================")
 	t.Logf("  ByteMsg / Protobuf = %.1f%%", float64(bmsgBuf.Len())/float64(protoSize)*100)
-	t.Logf("  ByteMsg / MsgPack  = %.1f%%", float64(bmsgBuf.Len())/float64(len(msgpackData))*100)
 	t.Logf("  ByteMsg / JSON     = %.1f%%", float64(bmsgBuf.Len())/float64(len(jsonData))*100)
+	t.Logf("  ByteMsg / MsgPack  = %.1f%%", float64(bmsgBuf.Len())/float64(len(msgpackData))*100)
 }
 
 func BenchmarkBytemsgEncode(b *testing.B) {
 	user := UserProfile{
 		Id: 12345, Name: "张三", Email: "zhangsan@example.com",
-		Tags: []string{"admin", "user", "developer"},
+		Tags:     []string{"admin", "user", "developer"},
 		Metadata: map[string]string{"department": "engineering", "level": "senior"},
 	}
 	b.ResetTimer()
@@ -256,7 +256,7 @@ func BenchmarkBytemsgEncode(b *testing.B) {
 func BenchmarkJSONEncode(b *testing.B) {
 	user := UserProfile{
 		Id: 12345, Name: "张三", Email: "zhangsan@example.com",
-		Tags: []string{"admin", "user", "developer"},
+		Tags:     []string{"admin", "user", "developer"},
 		Metadata: map[string]string{"department": "engineering", "level": "senior"},
 	}
 	b.ResetTimer()
@@ -268,7 +268,7 @@ func BenchmarkJSONEncode(b *testing.B) {
 func BenchmarkMsgpackEncode(b *testing.B) {
 	user := UserProfile{
 		Id: 12345, Name: "张三", Email: "zhangsan@example.com",
-		Tags: []string{"admin", "user", "developer"},
+		Tags:     []string{"admin", "user", "developer"},
 		Metadata: map[string]string{"department": "engineering", "level": "senior"},
 	}
 	b.ResetTimer()

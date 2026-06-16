@@ -52,6 +52,9 @@ func TestGoGenerator(t *testing.T) {
 	if len(files) != 1 {
 		t.Fatalf("Expected 1 file, got %d", len(files))
 	}
+	if files[0].Path != "ByteMsg233_Export.go" {
+		t.Fatalf("generated path = %q, want ByteMsg233_Export.go", files[0].Path)
+	}
 
 	content := string(files[0].Content)
 
@@ -73,6 +76,9 @@ func TestGoGenerator(t *testing.T) {
 	if !strings.Contains(content, "Name string") {
 		t.Error("Expected Name field")
 	}
+	if !strings.Contains(content, "`json:\"name\" bytemsg:\"2\"`") {
+		t.Error("Expected JSON field tag")
+	}
 	if !strings.Contains(content, "type UserType int32") {
 		t.Error("Expected UserType enum")
 	}
@@ -93,6 +99,12 @@ func TestGoGenerator(t *testing.T) {
 	}
 	if !strings.Contains(content, "func (x *UserProfile) Reset()") {
 		t.Error("Expected reset method")
+	}
+	if !strings.Contains(content, "func (x *UserProfile) MarshalByteMsgPrettyString() (string, error)") {
+		t.Error("Expected pretty string marshal helper")
+	}
+	if !strings.Contains(content, "func (x *UserProfile) UnmarshalByteMsgPrettyString(value string) error") {
+		t.Error("Expected pretty string unmarshal helper")
 	}
 }
 
@@ -288,6 +300,21 @@ func TestGeneratedRoundTripAndRegistry(t *testing.T) {
 	})
 	if allocs != 0 {
 		t.Fatalf("AppendByteMsgText allocs = %v, want 0", allocs)
+	}
+
+	pretty, err := source.MarshalByteMsgPrettyString()
+	if err != nil {
+		t.Fatalf("pretty marshal: %v", err)
+	}
+	if !strings.Contains(pretty, "\n  \"id\": 42") || !strings.Contains(pretty, "\"inner\": {") {
+		t.Fatalf("pretty string missing expected JSON shape: %s", pretty)
+	}
+	var fromPretty Player
+	if err := fromPretty.UnmarshalByteMsgPrettyString(pretty); err != nil {
+		t.Fatalf("pretty unmarshal: %v", err)
+	}
+	if !reflect.DeepEqual(source, &fromPretty) {
+		t.Fatalf("pretty roundtrip mismatch:\nsource=%#v\ntarget=%#v", source, fromPretty)
 	}
 }
 

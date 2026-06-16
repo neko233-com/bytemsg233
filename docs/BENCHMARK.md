@@ -8,30 +8,34 @@ bytemsg233 is optimized for schema-driven binary payloads with small field heade
 
 Lower is better.
 
-| Scenario | bytemsg233 | Protobuf | MessagePack | JSON |
-|---|---:|---:|---:|---:|
-| Player profile, 10 fields | **61 B** | 61 B | 155 B | 173 B |
-| Chat message, 5 fields | **57 B** | 57 B | 103 B | 116 B |
-| Battle input, 10 players x 8 fields | **247 B** | 266 B | 931 B | 1,097 B |
-| Leaderboard, 100 rows x 6 fields | **3,409 B** | 3,608 B | 8,711 B | 9,602 B |
+Column order is fixed: bytemsg233, Protobuf, JSON, then optional extra codecs.
 
-| Scenario | vs Protobuf | vs MessagePack | vs JSON |
+| Scenario | bytemsg233 | Protobuf | JSON | MessagePack |
+|---|---:|---:|---:|---:|
+| Player profile, 10 fields | **61 B** | 61 B | 173 B | 155 B |
+| Chat message, 5 fields | **57 B** | 57 B | 116 B | 103 B |
+| Battle input, 10 players x 8 fields | **247 B** | 266 B | 1,097 B | 931 B |
+| TaskDto list, 100 rows x 9 fields | **3,845 B** | 4,044 B | 14,691 B | 13,303 B |
+| Leaderboard, 100 rows x 6 fields | **3,409 B** | 3,608 B | 9,602 B | 8,711 B |
+
+| Scenario | vs Protobuf | vs JSON | vs MessagePack |
 |---|---:|---:|---:|
-| Player profile | 0% | -60.6% | -64.7% |
-| Chat message | 0% | -44.7% | -50.9% |
-| Battle input | -7.1% | -73.5% | -77.5% |
-| Leaderboard | -5.5% | -60.9% | -64.5% |
+| Player profile | 0% | -64.7% | -60.6% |
+| Chat message | 0% | -50.9% | -44.7% |
+| Battle input | -7.1% | -77.5% | -73.5% |
+| TaskDto list | -4.9% | -73.8% | -71.1% |
+| Leaderboard | -5.5% | -64.5% | -60.9% |
 
 ## Encode Speed
 
 Lower ns/op is better.
 
-| Scenario | bytemsg233 | Protobuf | MessagePack | JSON |
+| Scenario | bytemsg233 | Protobuf | JSON | MessagePack |
 |---|---:|---:|---:|---:|
-| Player profile | 140 | **90** | 513 | 387 |
-| Chat message | 154 | **107** | 375 | 317 |
-| Battle input | **979** | 2,030 | 3,994 | 2,836 |
-| Leaderboard | **9,277** | 26,729 | 52,826 | 21,990 |
+| Player profile | 140 | **90** | 387 | 513 |
+| Chat message | 154 | **107** | 317 | 375 |
+| Battle input | **979** | 2,030 | 2,836 | 3,994 |
+| Leaderboard | **9,277** | 26,729 | 21,990 | 52,826 |
 
 Interpretation:
 
@@ -43,11 +47,11 @@ Interpretation:
 
 Lower ns/op is better.
 
-| Scenario | bytemsg233 | Protobuf | MessagePack | JSON |
+| Scenario | bytemsg233 | Protobuf | JSON | MessagePack |
 |---|---:|---:|---:|---:|
-| Player profile | 279 | **104** | 612 | 1,636 |
-| Chat message | 224 | **86** | 349 | 969 |
-| Battle input | 1,001 | - | **90** | 172 |
+| Player profile | 279 | **104** | 1,636 | 612 |
+| Chat message | 224 | **86** | 969 | 349 |
+| Battle input | 1,001 | - | 172 | **90** |
 
 Decode still has room for generated fast paths. Current numbers are useful as a baseline, not the ceiling.
 
@@ -57,20 +61,28 @@ Lower allocs/op is better.
 
 ### Encode
 
-| Scenario | bytemsg233 | Protobuf | MessagePack | JSON |
+| Scenario | bytemsg233 | Protobuf | JSON | MessagePack |
 |---|---:|---:|---:|---:|
-| Player profile | 2 | 3 | 4 | 1 |
-| Battle input | 2 | 36 | 7 | 2 |
-| Leaderboard | 2 | 394 | 11 | 2 |
+| Player profile | 2 | 3 | 1 | 4 |
+| Battle input | 2 | 36 | 2 | 7 |
+| Leaderboard | 2 | 394 | 2 | 11 |
 
 ### Decode
 
-| Scenario | bytemsg233 | Protobuf | MessagePack | JSON |
+| Scenario | bytemsg233 | Protobuf | JSON | MessagePack |
 |---|---:|---:|---:|---:|
-| Player profile | 5 | 2 | 1 | 4 |
-| Chat message | 5 | 2 | 1 | 4 |
+| Player profile | 5 | 2 | 4 | 1 |
+| Chat message | 5 | 2 | 4 | 1 |
 
 Generated object pools are separate from these raw codec benchmark numbers. They are designed to reduce application-level churn after code generation, especially in client loops and Unity-style gameplay code.
+
+For hot-path encode code, prefer caller-owned buffers. `AppendEncoder` is the zero-GC path for preallocated byte slices. Example check:
+
+```bash
+go test ./pkg/binary -run ^$ -bench "BenchmarkEncode_TaskList" -benchtime=1000x -benchmem
+```
+
+Current `TaskList_ByteMsg` hot-path result: `0 B/op`, `0 allocs/op` for 100 `TaskDto` entries.
 
 ## Run Locally
 

@@ -40,7 +40,7 @@ func (g *Generator) Generate(s *schema.Schema, options *codegen.GenerateOptions)
 	}
 
 	return []*codegen.GeneratedFile{
-		{Path: "types" + g.FileExtension(), Content: []byte(buf.String())},
+		{Path: "ByteMsg233_Export" + g.FileExtension(), Content: []byte(buf.String())},
 	}, nil
 }
 

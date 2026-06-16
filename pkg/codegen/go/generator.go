@@ -86,7 +86,7 @@ func (g *Generator) Generate(s *schema.Schema, options *codegen.GenerateOptions)
 	}
 
 	return []*codegen.GeneratedFile{
-		{Path: "types" + g.FileExtension(), Content: []byte(buf.String())},
+		{Path: "ByteMsg233_Export" + g.FileExtension(), Content: []byte(buf.String())},
 	}, nil
 }
 
@@ -274,7 +274,7 @@ func (g *Generator) generateMessage(buf *strings.Builder, s *schema.Schema, name
 		}
 
 		goName := codegen.ToPascalCase(fieldName)
-		buf.WriteString(fmt.Sprintf("\t%s %s `bytemsg:\"%d\"`\n", goName, spec.Go, field.Tag))
+		buf.WriteString(fmt.Sprintf("\t%s %s `json:%q bytemsg:\"%d\"`\n", goName, spec.Go, fieldName, field.Tag))
 	}
 	buf.WriteString("}\n\n")
 
@@ -597,6 +597,16 @@ func (g *Generator) generateReadNestedValue(buf *strings.Builder, s *schema.Sche
 }
 
 func (g *Generator) generateTextMethods(buf *strings.Builder, s *schema.Schema, name string, msg *schema.Message) {
+	buf.WriteString(fmt.Sprintf("func (x *%s) MarshalByteMsgPrettyString() (string, error) {\n", name))
+	buf.WriteString("\treturn bytemsgBinary.MarshalPrettyString(x)\n")
+	buf.WriteString("}\n\n")
+
+	buf.WriteString(fmt.Sprintf("func (x *%s) UnmarshalByteMsgPrettyString(value string) error {\n", name))
+	buf.WriteString(fmt.Sprintf("\tif x == nil {\n\t\treturn fmt.Errorf(\"bytemsg233: nil target %s\")\n\t}\n", name))
+	buf.WriteString("\tx.Reset()\n")
+	buf.WriteString("\treturn bytemsgBinary.UnmarshalPrettyString(value, x)\n")
+	buf.WriteString("}\n\n")
+
 	buf.WriteString(fmt.Sprintf("func (x *%s) AppendByteMsgText(dst []byte) []byte {\n", name))
 	buf.WriteString("\tif x == nil {\n")
 	buf.WriteString(fmt.Sprintf("\t\treturn append(dst, %q...)\n", name+"<nil>"))

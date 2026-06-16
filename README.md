@@ -95,11 +95,24 @@ YAML is still supported for teams that prefer it, and legacy `.bmsg` can be expo
 | Language | Status | Runtime path | Pooling API | Enum style |
 |---|---|---|---|---|
 | Go | priority | `libs/go` | `AcquireHero()` / `ReleaseHero()` / `Reset()` | typed consts, parse helpers |
-| C# / Unity | priority | `libs/csharp` | `Hero.Rent()` / `Hero.Return()` / `Release()` | native `enum` helpers |
+| C# / Unity | priority | `libs/csharp` | `new Hero()` / `Hero.Prewarm()` / `Hero.Rent()` / `Hero.Return()` / `Release()` | native `enum` helpers |
 | TypeScript / JavaScript | priority | `libs/typescript` | `Hero.acquire()` / `release()` | `enum` plus JS runtime |
 | Rust | priority | `libs/rust` | `ByteMsgPool<T>` | `enum`, `from_value()` |
 | Java | priority | `libs/java` | `Hero.acquire()` / `release()` | enum instances |
 | Python | supported | generated code | `Hero.acquire()` / `release()` | `IntEnum` |
+
+Go generated messages also support official pretty string conversion for tools, logs, and fixtures:
+
+```go
+pretty, err := hero.MarshalByteMsgPrettyString()
+err = hero.UnmarshalByteMsgPrettyString(pretty)
+```
+
+The pretty string format is indented JSON using schema field names; maps use `key` / `value` entries so every supported map key type round-trips.
+
+C# / Unity generated messages are `partial class` by default. Keep custom gameplay helpers in separate partial files; regenerated protocol code can then be replaced safely. Use `Prewarm` during loading to make pool-backed `Rent` / `Return` flows allocation-free in gameplay hot paths.
+
+Single-file exports use `ByteMsg233_Export` by default, for example `ByteMsg233_Export.go`, `ByteMsg233_Export.cs`, and `ByteMsg233_Export.ts`.
 
 ## Export Protocol Docs
 
@@ -128,12 +141,13 @@ The copy command intentionally skips `.git`, `node_modules`, `build`, `dist`, an
 
 ## Performance Snapshot
 
-| Scenario | bytemsg233 | Protobuf | MessagePack | JSON payload |
+| Scenario | bytemsg233 | Protobuf | JSON payload | MessagePack |
 |---|---:|---:|---:|---:|
-| Player profile, 10 fields | 61 B | 61 B | 155 B | 173 B |
-| Chat message, 5 fields | 57 B | 57 B | 103 B | 116 B |
-| Battle input, 10 players | 247 B | 266 B | 931 B | 1,097 B |
-| Leaderboard, 100 rows | 3,409 B | 3,608 B | 8,711 B | 9,602 B |
+| Player profile, 10 fields | 61 B | 61 B | 173 B | 155 B |
+| Chat message, 5 fields | 57 B | 57 B | 116 B | 103 B |
+| Battle input, 10 players | 247 B | 266 B | 1,097 B | 931 B |
+| TaskDto list, 100 rows | 3,845 B | 4,044 B | 14,691 B | 13,303 B |
+| Leaderboard, 100 rows | 3,409 B | 3,608 B | 9,602 B | 8,711 B |
 
 Run locally:
 

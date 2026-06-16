@@ -155,6 +155,86 @@ func TestFixedEncoding(t *testing.T) {
 	}
 }
 
+func TestBufferEncoder(t *testing.T) {
+	var buf bytes.Buffer
+	enc := NewBufferEncoderValue(&buf)
+
+	if err := enc.WriteFieldHeader(1, 0); err != nil {
+		t.Fatalf("WriteFieldHeader failed: %v", err)
+	}
+	if err := enc.WriteVarint(42); err != nil {
+		t.Fatalf("WriteVarint failed: %v", err)
+	}
+	if err := enc.WriteFieldHeader(2, 2); err != nil {
+		t.Fatalf("WriteFieldHeader failed: %v", err)
+	}
+	if err := enc.WriteString("debug"); err != nil {
+		t.Fatalf("WriteString failed: %v", err)
+	}
+
+	dec := NewDecoder(bytes.NewReader(buf.Bytes()))
+	tag, wireType, err := dec.ReadFieldHeader()
+	if err != nil {
+		t.Fatalf("ReadFieldHeader failed: %v", err)
+	}
+	if tag != 1 || wireType != 0 {
+		t.Fatalf("field header = (%d, %d), want (1, 0)", tag, wireType)
+	}
+	value, err := dec.ReadVarint()
+	if err != nil {
+		t.Fatalf("ReadVarint failed: %v", err)
+	}
+	if value != 42 {
+		t.Fatalf("value = %d, want 42", value)
+	}
+	tag, wireType, err = dec.ReadFieldHeader()
+	if err != nil {
+		t.Fatalf("ReadFieldHeader failed: %v", err)
+	}
+	if tag != 2 || wireType != 2 {
+		t.Fatalf("field header = (%d, %d), want (2, 2)", tag, wireType)
+	}
+	text, err := dec.ReadString()
+	if err != nil {
+		t.Fatalf("ReadString failed: %v", err)
+	}
+	if text != "debug" {
+		t.Fatalf("text = %q, want debug", text)
+	}
+}
+
+func TestAppendEncoder(t *testing.T) {
+	enc := NewAppendEncoderValue(make([]byte, 0, 32))
+	if err := enc.WriteFieldHeader(1, 0); err != nil {
+		t.Fatalf("WriteFieldHeader failed: %v", err)
+	}
+	if err := enc.WriteVarint(42); err != nil {
+		t.Fatalf("WriteVarint failed: %v", err)
+	}
+	if err := enc.WriteFieldHeader(2, 2); err != nil {
+		t.Fatalf("WriteFieldHeader failed: %v", err)
+	}
+	if err := enc.WriteString("debug"); err != nil {
+		t.Fatalf("WriteString failed: %v", err)
+	}
+
+	dec := NewDecoder(bytes.NewReader(enc.Bytes()))
+	tag, wireType, err := dec.ReadFieldHeader()
+	if err != nil {
+		t.Fatalf("ReadFieldHeader failed: %v", err)
+	}
+	if tag != 1 || wireType != 0 {
+		t.Fatalf("field header = (%d, %d), want (1, 0)", tag, wireType)
+	}
+	value, err := dec.ReadVarint()
+	if err != nil {
+		t.Fatalf("ReadVarint failed: %v", err)
+	}
+	if value != 42 {
+		t.Fatalf("value = %d, want 42", value)
+	}
+}
+
 func TestBufferPoolLimit(t *testing.T) {
 	for {
 		select {

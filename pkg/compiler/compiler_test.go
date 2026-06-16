@@ -32,9 +32,9 @@ message User {
 		t.Fatalf("Compile failed: %v", err)
 	}
 
-	outputPath := filepath.Join(tmpDir, "types.go")
+	outputPath := filepath.Join(tmpDir, "ByteMsg233_Export.go")
 	if _, err := os.Stat(outputPath); os.IsNotExist(err) {
-		t.Error("Expected types.go to be created")
+		t.Error("Expected ByteMsg233_Export.go to be created")
 	}
 }
 
@@ -67,9 +67,9 @@ messages:
 		t.Fatalf("Compile failed: %v", err)
 	}
 
-	outputPath := filepath.Join(tmpDir, "types.go")
+	outputPath := filepath.Join(tmpDir, "ByteMsg233_Export.go")
 	if _, err := os.Stat(outputPath); os.IsNotExist(err) {
-		t.Error("Expected types.go to be created")
+		t.Error("Expected ByteMsg233_Export.go to be created")
 	}
 }
 
@@ -102,12 +102,12 @@ message User {
 	}
 
 	expectedFiles := map[string]string{
-		"types.go":  "func AcquireUser() *User",
-		"Types.cs":  "public static User Rent()",
-		"User.java": "public static User acquire()",
-		"types.ts":  "export class User",
-		"types.rs":  "pub struct User",
-		"types.py":  "def acquire(cls) -> \"User\":",
+		"ByteMsg233_Export.go": "func AcquireUser() *User",
+		"ByteMsg233_Export.cs": "public static User Rent()",
+		"User.java":            "public static User acquire()",
+		"ByteMsg233_Export.ts": "export class User",
+		"ByteMsg233_Export.rs": "pub struct User",
+		"ByteMsg233_Export.py": "def acquire(cls) -> \"User\":",
 	}
 
 	for file, expected := range expectedFiles {

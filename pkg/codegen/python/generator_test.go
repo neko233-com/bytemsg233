@@ -33,6 +33,9 @@ func TestPythonGenerator(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Generate failed: %v", err)
 	}
+	if files[0].Path != "ByteMsg233_Export.py" {
+		t.Fatalf("generated path = %q, want ByteMsg233_Export.py", files[0].Path)
+	}
 
 	content := string(files[0].Content)
 	if !strings.Contains(content, "from dataclasses import dataclass") {
