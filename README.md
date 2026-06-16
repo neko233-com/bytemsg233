@@ -57,18 +57,7 @@ Top-level JSON keys are message names. Reserved keys such as `schema`, `package`
   "schema": "bymsg/v1",
   "package": "com.example.game",
   "enums": {
-    "HeroState": {
-      "description": {
-        "zh": "英雄状态",
-        "en": "Hero state"
-      },
-      "values": {
-        "IDLE": 0,
-        "MOVING": 1,
-        "ATTACKING": 2,
-        "DEAD": 3
-      }
-    }
+    "HeroState": ["IDLE", "MOVING", "ATTACKING", "DEAD"]
   },
   "Hero": {
     "packetId": 1001,
@@ -81,13 +70,21 @@ Top-level JSON keys are message names. Reserved keys such as `schema`, `package`
       "type": "string",
       "comment": "Hero name"
     },
-    "skill_ids": "list<uint32>",
+    "skill_ids": { "list": "uint32", "comment": "Skill IDs" },
+    "attrs": { "map": ["string", "uint32"], "comment": "Attributes" },
     "state": "HeroState"
   }
 }
 ```
 
 Only three things matter for fields: field name, type, and optional comment. `tag` is optional; when omitted, bytemsg233 assigns tags from JSON field order. `packetId` is optional and belongs on the message, which matches game protocol routing.
+
+Enums, lists, maps, and comments are first-class:
+
+- Enums can be `["IDLE", "MOVING"]`, `{ "OK": 0, "TIMEOUT": 10 }`, or `{ "comment": "...", "values": [...] }`.
+- Lists can be `"list<uint32>"` or `{ "list": "uint32", "comment": "..." }`.
+- Maps can be `"map<string, uint32>"`, `{ "map": ["string", "uint32"] }`, or `{ "map": { "key": "string", "value": "uint32" } }`.
+- Comments can be the short `comment` string or localized `description.zh` / `description.en`.
 
 For complex data, reference another message class by name instead of nesting message structures inline. That keeps packets readable and keeps generated classes pool-friendly.
 

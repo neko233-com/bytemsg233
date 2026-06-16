@@ -67,16 +67,7 @@ func main() {
   "schema": "bymsg/v1",
   "package": "%s",
   "enums": {
-    "Status": {
-      "description": {
-        "zh": "状态",
-        "en": "Status"
-      },
-      "values": {
-        "ACTIVE": 0,
-        "INACTIVE": 1
-      }
-    }
+    "Status": ["ACTIVE", "INACTIVE"]
   },
   "Example": {
     "packetId": 1001,
@@ -89,7 +80,9 @@ func main() {
       "type": "string",
       "comment": "Name"
     },
-    "status": "Status"
+    "status": "Status",
+    "tags": { "list": "string", "comment": "Tags" },
+    "attrs": { "map": ["string", "string"], "comment": "Attributes" }
   }
 }
 `, name)

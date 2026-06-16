@@ -67,16 +67,20 @@ func ParseYAML(data []byte) (*Schema, error) {
 
 // ParseJSON parses JSON content
 func ParseJSON(data []byte) (*Schema, error) {
+	native, nativeErr := parseNativeJSON(data)
+	if nativeErr == nil {
+		if err := validate(native); err != nil {
+			return nil, err
+		}
+		return native, nil
+	}
+
 	var schema Schema
 	if err := json.Unmarshal(data, &schema); err != nil {
 		return nil, fmt.Errorf("parse json: %w", err)
 	}
 	if len(schema.Messages) == 0 {
-		native, err := parseNativeJSON(data)
-		if err != nil {
-			return nil, err
-		}
-		schema = *native
+		return nil, nativeErr
 	}
 	if err := validate(&schema); err != nil {
 		return nil, err
@@ -102,9 +106,18 @@ func parseNativeJSON(data []byte) (*Schema, error) {
 		_ = json.Unmarshal(raw, &s.Package)
 	}
 	if raw, ok := root["enums"]; ok {
-		if err := json.Unmarshal(raw, &s.Enums); err != nil {
+		enums, err := parseNativeJSONEnums(raw)
+		if err != nil {
 			return nil, fmt.Errorf("parse json enums: %w", err)
 		}
+		s.Enums = enums
+	}
+	if raw, ok := root["messages"]; ok {
+		messages, err := parseNativeJSONMessages(raw)
+		if err != nil {
+			return nil, fmt.Errorf("parse json messages: %w", err)
+		}
+		s.Messages = messages
 	}
 
 	for name, raw := range root {
@@ -120,6 +133,23 @@ func parseNativeJSON(data []byte) (*Schema, error) {
 	}
 
 	return s, nil
+}
+
+func parseNativeJSONMessages(raw json.RawMessage) (map[string]*Message, error) {
+	var root map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &root); err != nil {
+		return nil, err
+	}
+
+	messages := make(map[string]*Message, len(root))
+	for name, msgRaw := range root {
+		msg, err := parseNativeJSONMessage(msgRaw)
+		if err != nil {
+			return nil, fmt.Errorf("message %s: %w", name, err)
+		}
+		messages[name] = msg
+	}
+	return messages, nil
 }
 
 func parseNativeJSONMessage(raw json.RawMessage) (*Message, error) {
@@ -180,12 +210,151 @@ func parseNativeJSONField(raw json.RawMessage) (*Field, error) {
 		return &field, nil
 	}
 
+	if err := json.Unmarshal(raw, &field); err == nil {
+		if fieldType, ok, err := parseStructuredFieldType(raw); ok || err != nil {
+			if err != nil {
+				return nil, err
+			}
+			field.Type = fieldType
+			normalizeComment(&field)
+			return &field, nil
+		}
+	}
+
 	var fieldType string
 	if err := json.Unmarshal(raw, &fieldType); err == nil && fieldType != "" {
 		return &Field{Type: fieldType}, nil
 	}
 
 	return nil, fmt.Errorf("expected field object with type/tag")
+}
+
+func parseNativeJSONEnums(raw json.RawMessage) (map[string]*Enum, error) {
+	var root map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &root); err != nil {
+		return nil, err
+	}
+
+	enums := make(map[string]*Enum, len(root))
+	for enumName, enumRaw := range root {
+		enum, err := parseNativeJSONEnum(enumRaw)
+		if err != nil {
+			return nil, fmt.Errorf("enum %s: %w", enumName, err)
+		}
+		enums[enumName] = enum
+	}
+	return enums, nil
+}
+
+func parseNativeJSONEnum(raw json.RawMessage) (*Enum, error) {
+	var names []string
+	if err := json.Unmarshal(raw, &names); err == nil {
+		return enumFromNames(names), nil
+	}
+
+	var values map[string]int
+	if err := json.Unmarshal(raw, &values); err == nil && len(values) > 0 {
+		return &Enum{Values: values}, nil
+	}
+
+	var obj map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &obj); err != nil {
+		return nil, err
+	}
+
+	enum := &Enum{Values: make(map[string]int)}
+	if rawDesc, ok := obj["description"]; ok {
+		var desc Description
+		if err := json.Unmarshal(rawDesc, &desc); err != nil {
+			return nil, fmt.Errorf("description: %w", err)
+		}
+		enum.Description = &desc
+	}
+	if rawComment, ok := obj["comment"]; ok && enum.Description == nil {
+		var comment string
+		if err := json.Unmarshal(rawComment, &comment); err != nil {
+			return nil, fmt.Errorf("comment: %w", err)
+		}
+		enum.Description = &Description{Zh: comment, En: comment}
+	}
+	if rawValues, ok := obj["values"]; ok {
+		if err := json.Unmarshal(rawValues, &enum.Values); err == nil {
+			return enum, nil
+		}
+		var valueNames []string
+		if err := json.Unmarshal(rawValues, &valueNames); err == nil {
+			enum.Values = enumFromNames(valueNames).Values
+			return enum, nil
+		}
+		return nil, fmt.Errorf("values must be an object or string array")
+	}
+
+	for _, key := range orderedObjectKeys(raw) {
+		if key == "description" || key == "comment" {
+			continue
+		}
+		var value int
+		if err := json.Unmarshal(obj[key], &value); err != nil {
+			return nil, fmt.Errorf("value %s must be an integer", key)
+		}
+		enum.Values[key] = value
+	}
+	return enum, nil
+}
+
+func enumFromNames(names []string) *Enum {
+	values := make(map[string]int, len(names))
+	for i, name := range names {
+		values[name] = i
+	}
+	return &Enum{Values: values}
+}
+
+func parseStructuredFieldType(raw json.RawMessage) (string, bool, error) {
+	var obj map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &obj); err != nil {
+		return "", false, nil
+	}
+
+	if rawList, ok := obj["list"]; ok {
+		var inner string
+		if err := json.Unmarshal(rawList, &inner); err != nil || inner == "" {
+			return "", true, fmt.Errorf("list must be a type string")
+		}
+		return fmt.Sprintf("list<%s>", inner), true, nil
+	}
+
+	if rawMap, ok := obj["map"]; ok {
+		keyType, valueType, err := parseMapType(rawMap)
+		if err != nil {
+			return "", true, err
+		}
+		return fmt.Sprintf("map<%s, %s>", keyType, valueType), true, nil
+	}
+
+	return "", false, nil
+}
+
+func parseMapType(raw json.RawMessage) (string, string, error) {
+	var pair []string
+	if err := json.Unmarshal(raw, &pair); err == nil {
+		if len(pair) != 2 || pair[0] == "" || pair[1] == "" {
+			return "", "", fmt.Errorf("map array must be [keyType, valueType]")
+		}
+		return pair[0], pair[1], nil
+	}
+
+	var obj struct {
+		Key   string `json:"key"`
+		Value string `json:"value"`
+	}
+	if err := json.Unmarshal(raw, &obj); err != nil {
+		return "", "", fmt.Errorf("map must be [keyType, valueType] or {key,value}")
+	}
+	if obj.Key == "" || obj.Value == "" {
+		return "", "", fmt.Errorf("map key and value are required")
+	}
+	return obj.Key, obj.Value, nil
 }
 
 func normalizeComment(field *Field) {

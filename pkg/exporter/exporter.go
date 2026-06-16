@@ -45,14 +45,14 @@ func Markdown(s *schema.Schema) []byte {
 				buf.WriteString(descriptionLine(msg.Description))
 				buf.WriteString("\n")
 			}
-			buf.WriteString("| Tag | Field | Type | Description |\n|---:|---|---|---|\n")
+			buf.WriteString("| Tag | Field | Kind | Type | Description |\n|---:|---|---|---|---|\n")
 			for _, fieldName := range codegen.SortedFieldNames(msg) {
 				field := msg.Fields[fieldName]
 				desc := ""
 				if field.Description != nil {
 					desc = inlineDescription(field.Description)
 				}
-				buf.WriteString(fmt.Sprintf("| %d | `%s` | `%s` | %s |\n", field.Tag, fieldName, field.Type, desc))
+				buf.WriteString(fmt.Sprintf("| %d | `%s` | %s | `%s` | %s |\n", field.Tag, fieldName, fieldKind(s, field.Type), field.Type, desc))
 			}
 			buf.WriteString("\n")
 		}
@@ -236,4 +236,22 @@ func inlineDescription(desc *schema.Description) string {
 		return desc.Zh
 	}
 	return desc.En
+}
+
+func fieldKind(s *schema.Schema, fieldType string) string {
+	switch {
+	case strings.HasPrefix(fieldType, "list<"):
+		return "list"
+	case strings.HasPrefix(fieldType, "map<"):
+		return "map"
+	}
+	if s != nil {
+		if _, ok := s.Enums[fieldType]; ok {
+			return "enum"
+		}
+		if _, ok := s.Messages[fieldType]; ok {
+			return "message"
+		}
+	}
+	return "scalar"
 }
