@@ -65,6 +65,7 @@ Top-level JSON keys are message names. Reserved keys such as `schema`, `package`
 ```json
 {
   "schema": "bymsg/v1",
+  "protocolVersion": 7,
   "package": "com.example.game",
   "enums": {
     "HeroState": ["IDLE", "MOVING", "ATTACKING", "DEAD"]
@@ -88,6 +89,12 @@ Top-level JSON keys are message names. Reserved keys such as `schema`, `package`
 ```
 
 Only three things matter for fields: field name, type, and optional comment. `tag` is optional; when omitted, ByteMsg233 assigns tags from JSON field order. `packetId` is optional and belongs on the message, which matches game protocol routing.
+
+`protocolVersion` is the business protocol version used for server/client compatibility checks. Generated code exports `ByteMsgProtocolVersion`, so business code can read the schema/runtime version from the generated package instead of putting a version on every message. Recommended game networking flow: send a `ProtocolHello(version, minCompatible)` once when the socket/session opens, reject mismatches early, and keep per-message hot paths free of a repeated version header. If a gateway truly needs mixed protocol versions on one connection, put the version in the business envelope instead. Content fingerprints are optional business data, not a runtime-enforced ByteMsg233 default.
+
+Generated readers and runtimes skip unknown fields for supported wire types, so adding a new field does not break older readers. Unknown fields are dropped when an old process re-encodes unless your business layer explicitly preserves them.
+
+Binary-capable generated targets expose package-level protocol version helpers such as `GetByteMsg233ProtocolVersion()` or language-native equivalents. The Go fast path also exposes `IByteMsg233Api` with `SerializeByteMsg233()` and `DeserializeFromByteMsg233(data)` as a thin interface-friendly wrapper; performance-critical game code can still call the lower-level append/decode APIs directly.
 
 Enums, lists, maps, and comments are first-class:
 
@@ -168,7 +175,8 @@ Read this table as a practical game/client baseline, not as a tiny-object trick.
 | Player profile, 10 fields | 61 B | 61 B | 173 B | 155 B |
 | Chat message, 5 fields | 57 B | 57 B | 116 B | 103 B |
 | ChatDto all types | 304 B | 316 B | 647 B | 531 B |
-| Battle input, 10 players | 247 B | 266 B | 1097 B | 931 B |
+| RPC envelope + ChatDto payload, 1x | 316 B | 328 B | 928 B | 597 B |
+| Battle input, 10 players | 130 B | 266 B | 1097 B | 931 B |
 | TaskDto list, 100 rows | 2261 B | 4044 B | 14691 B | 13303 B |
 | Leaderboard, 100 rows | 2518 B | 3608 B | 9602 B | 8711 B |
 

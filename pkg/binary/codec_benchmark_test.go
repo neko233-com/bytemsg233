@@ -896,25 +896,100 @@ func decodeStringMapBmsg(data []byte) map[string]string {
 }
 
 func encodeInputsBmsg(inputs []BenchBattleInput) []byte {
-	buf := make([]byte, 0, 256)
+	buf := make([]byte, 0, 160)
 	buf = AppendVarint(buf, uint64(len(inputs)))
-	for _, in := range inputs {
-		buf = AppendFieldHeader(buf, 1, 0)
-		buf = AppendVarint(buf, uint64(in.PlayerId))
-		buf = AppendFieldHeader(buf, 2, 0)
-		buf = AppendVarint(buf, uint64(in.HeroId))
-		buf = AppendFieldHeader(buf, 3, 0)
-		buf = AppendVarint(buf, uint64(in.Action))
-		buf = AppendFieldHeader(buf, 4, 0)
-		buf = AppendVarint(buf, uint64(in.SkillId))
-		buf = AppendFieldHeader(buf, 5, 0)
-		buf = AppendVarint(buf, uint64(in.TargetId))
-		buf = AppendFieldHeader(buf, 6, 0)
-		buf = AppendZigzag(buf, int64(in.X))
-		buf = AppendFieldHeader(buf, 7, 0)
-		buf = AppendZigzag(buf, int64(in.Y))
-		buf = AppendFieldHeader(buf, 8, 0)
-		buf = AppendVarint(buf, uint64(in.Dir))
+	buf = appendBattlePlayerIDDeltaColumn(buf, inputs)
+	buf = appendBattleHeroIDDeltaColumn(buf, inputs)
+	buf = appendBattleActionColumn(buf, inputs)
+	buf = appendBattleSkillDeltaColumn(buf, inputs)
+	buf = appendBattleTargetColumn(buf, inputs)
+	buf = appendBattleXColumn(buf, inputs)
+	buf = appendBattleYColumn(buf, inputs)
+	buf = appendBattleDirColumn(buf, inputs)
+	return buf
+}
+
+func appendBattlePlayerIDDeltaColumn(buf []byte, inputs []BenchBattleInput) []byte {
+	buf = AppendVarint(buf, uint64(len(inputs)))
+	if len(inputs) == 0 {
+		return buf
+	}
+	prev := uint64(inputs[0].PlayerId)
+	buf = AppendVarint(buf, prev)
+	for _, input := range inputs[1:] {
+		value := uint64(input.PlayerId)
+		buf = AppendZigzag(buf, int64(value)-int64(prev))
+		prev = value
+	}
+	return buf
+}
+
+func appendBattleHeroIDDeltaColumn(buf []byte, inputs []BenchBattleInput) []byte {
+	buf = AppendVarint(buf, uint64(len(inputs)))
+	if len(inputs) == 0 {
+		return buf
+	}
+	prev := uint64(inputs[0].HeroId)
+	buf = AppendVarint(buf, prev)
+	for _, input := range inputs[1:] {
+		value := uint64(input.HeroId)
+		buf = AppendZigzag(buf, int64(value)-int64(prev))
+		prev = value
+	}
+	return buf
+}
+
+func appendBattleActionColumn(buf []byte, inputs []BenchBattleInput) []byte {
+	buf = AppendVarint(buf, uint64(len(inputs)))
+	for _, input := range inputs {
+		buf = AppendVarint(buf, uint64(input.Action))
+	}
+	return buf
+}
+
+func appendBattleSkillDeltaColumn(buf []byte, inputs []BenchBattleInput) []byte {
+	buf = AppendVarint(buf, uint64(len(inputs)))
+	if len(inputs) == 0 {
+		return buf
+	}
+	prev := uint64(inputs[0].SkillId)
+	buf = AppendVarint(buf, prev)
+	for _, input := range inputs[1:] {
+		value := uint64(input.SkillId)
+		buf = AppendZigzag(buf, int64(value)-int64(prev))
+		prev = value
+	}
+	return buf
+}
+
+func appendBattleTargetColumn(buf []byte, inputs []BenchBattleInput) []byte {
+	buf = AppendVarint(buf, uint64(len(inputs)))
+	for _, input := range inputs {
+		buf = AppendVarint(buf, uint64(input.TargetId))
+	}
+	return buf
+}
+
+func appendBattleXColumn(buf []byte, inputs []BenchBattleInput) []byte {
+	buf = AppendVarint(buf, uint64(len(inputs)))
+	for _, input := range inputs {
+		buf = AppendZigzag(buf, int64(input.X))
+	}
+	return buf
+}
+
+func appendBattleYColumn(buf []byte, inputs []BenchBattleInput) []byte {
+	buf = AppendVarint(buf, uint64(len(inputs)))
+	for _, input := range inputs {
+		buf = AppendZigzag(buf, int64(input.Y))
+	}
+	return buf
+}
+
+func appendBattleDirColumn(buf []byte, inputs []BenchBattleInput) []byte {
+	buf = AppendVarint(buf, uint64(len(inputs)))
+	for _, input := range inputs {
+		buf = AppendVarint(buf, uint64(input.Dir))
 	}
 	return buf
 }
@@ -1122,6 +1197,104 @@ func decodeTasksBmsgColumn(data []byte) []BenchTaskDto {
 	return state.decode(data)
 }
 
+type benchBattleColumnDecodeState struct {
+	inputs    []BenchBattleInput
+	playerIds []uint64
+	heroIds   []uint64
+	actions   []uint64
+	skillIds  []uint64
+	targetIds []uint64
+	xs        []int64
+	ys        []int64
+	dirs      []uint64
+}
+
+func (s *benchBattleColumnDecodeState) decode(data []byte) []BenchBattleInput {
+	dec := NewSliceDecoder(data)
+	count, _ := dec.ReadVarint()
+	s.playerIds, _ = dec.ReadDeltaVarints(s.playerIds)
+	s.heroIds, _ = dec.ReadDeltaVarints(s.heroIds)
+	s.actions, _ = dec.ReadPackedVarints(s.actions)
+	s.skillIds, _ = dec.ReadDeltaVarints(s.skillIds)
+	s.targetIds, _ = dec.ReadPackedVarints(s.targetIds)
+	s.xs, _ = dec.ReadPackedZigzags(s.xs)
+	s.ys, _ = dec.ReadPackedZigzags(s.ys)
+	s.dirs, _ = dec.ReadPackedVarints(s.dirs)
+	if uint64(cap(s.inputs)) < count {
+		s.inputs = make([]BenchBattleInput, int(count))
+	} else {
+		s.inputs = s.inputs[:int(count)]
+	}
+	for i := range s.inputs {
+		s.inputs[i].PlayerId = uint32(s.playerIds[i])
+		s.inputs[i].HeroId = uint32(s.heroIds[i])
+		s.inputs[i].Action = uint32(s.actions[i])
+		s.inputs[i].SkillId = uint32(s.skillIds[i])
+		s.inputs[i].TargetId = uint32(s.targetIds[i])
+		s.inputs[i].X = int32(s.xs[i])
+		s.inputs[i].Y = int32(s.ys[i])
+		s.inputs[i].Dir = uint32(s.dirs[i])
+	}
+	return s.inputs
+}
+
+func (s *benchBattleColumnDecodeState) prewarm(count int) {
+	s.inputs = make([]BenchBattleInput, count)
+	s.playerIds = make([]uint64, 0, count)
+	s.heroIds = make([]uint64, 0, count)
+	s.actions = make([]uint64, 0, count)
+	s.skillIds = make([]uint64, 0, count)
+	s.targetIds = make([]uint64, 0, count)
+	s.xs = make([]int64, 0, count)
+	s.ys = make([]int64, 0, count)
+	s.dirs = make([]uint64, 0, count)
+}
+
+type benchLeaderboardColumnDecodeState struct {
+	entries   []BenchRankEntry
+	ranks     []uint64
+	playerIds []uint64
+	names     []string
+	levels    []uint64
+	scores    []uint64
+	guilds    []string
+}
+
+func (s *benchLeaderboardColumnDecodeState) decode(data []byte) []BenchRankEntry {
+	dec := NewSliceDecoder(data)
+	count, _ := dec.ReadVarint()
+	s.ranks, _ = dec.ReadDeltaVarints(s.ranks)
+	s.playerIds, _ = dec.ReadDeltaVarints(s.playerIds)
+	s.names, _ = dec.ReadStringList(s.names)
+	s.levels, _ = dec.ReadPackedVarints(s.levels)
+	s.scores, _ = dec.ReadDeltaVarints(s.scores)
+	s.guilds, _ = dec.ReadStringList(s.guilds)
+	if uint64(cap(s.entries)) < count {
+		s.entries = make([]BenchRankEntry, int(count))
+	} else {
+		s.entries = s.entries[:int(count)]
+	}
+	for i := range s.entries {
+		s.entries[i].Rank = uint32(s.ranks[i])
+		s.entries[i].PlayerId = s.playerIds[i]
+		s.entries[i].Name = s.names[i]
+		s.entries[i].Level = uint32(s.levels[i])
+		s.entries[i].Score = s.scores[i]
+		s.entries[i].Guild = s.guilds[i]
+	}
+	return s.entries
+}
+
+func (s *benchLeaderboardColumnDecodeState) prewarm(count int) {
+	s.entries = make([]BenchRankEntry, count)
+	s.ranks = make([]uint64, 0, count)
+	s.playerIds = make([]uint64, 0, count)
+	s.names = make([]string, 0, count)
+	s.levels = make([]uint64, 0, count)
+	s.scores = make([]uint64, 0, count)
+	s.guilds = make([]string, 0, count)
+}
+
 type benchTaskColumnDecodeState struct {
 	tasks        []BenchTaskDto
 	taskIds      []uint64
@@ -1177,6 +1350,141 @@ func (s *benchTaskColumnDecodeState) prewarm(count int) {
 	s.rewardCounts = make([]uint64, 0, count)
 	s.expireAts = make([]uint64, 0, count)
 	s.titles = make([]string, 0, count)
+}
+
+func decodeInputsProto(data []byte) []BenchBattleInput {
+	inputs := make([]BenchBattleInput, 0, 10)
+	for len(data) > 0 {
+		num, typ, n := protowire.ConsumeTag(data)
+		if n < 0 {
+			break
+		}
+		data = data[n:]
+		if num != 1 || typ != protowire.BytesType {
+			n = protowire.ConsumeFieldValue(num, typ, data)
+			if n < 0 {
+				break
+			}
+			data = data[n:]
+			continue
+		}
+		msg, n := protowire.ConsumeBytes(data)
+		if n < 0 {
+			break
+		}
+		data = data[n:]
+		var input BenchBattleInput
+		for len(msg) > 0 {
+			field, fieldType, consumed := protowire.ConsumeTag(msg)
+			if consumed < 0 {
+				break
+			}
+			msg = msg[consumed:]
+			if fieldType != protowire.VarintType {
+				consumed = protowire.ConsumeFieldValue(field, fieldType, msg)
+				if consumed < 0 {
+					break
+				}
+				msg = msg[consumed:]
+				continue
+			}
+			v, consumed := protowire.ConsumeVarint(msg)
+			if consumed < 0 {
+				break
+			}
+			msg = msg[consumed:]
+			switch field {
+			case 1:
+				input.PlayerId = uint32(v)
+			case 2:
+				input.HeroId = uint32(v)
+			case 3:
+				input.Action = uint32(v)
+			case 4:
+				input.SkillId = uint32(v)
+			case 5:
+				input.TargetId = uint32(v)
+			case 6:
+				input.X = int32(protowire.DecodeZigZag(v))
+			case 7:
+				input.Y = int32(protowire.DecodeZigZag(v))
+			case 8:
+				input.Dir = uint32(v)
+			}
+		}
+		inputs = append(inputs, input)
+	}
+	return inputs
+}
+
+func decodeLeaderboardProto(data []byte) []BenchRankEntry {
+	entries := make([]BenchRankEntry, 0, 100)
+	for len(data) > 0 {
+		num, typ, n := protowire.ConsumeTag(data)
+		if n < 0 {
+			break
+		}
+		data = data[n:]
+		if num != 1 || typ != protowire.BytesType {
+			n = protowire.ConsumeFieldValue(num, typ, data)
+			if n < 0 {
+				break
+			}
+			data = data[n:]
+			continue
+		}
+		msg, n := protowire.ConsumeBytes(data)
+		if n < 0 {
+			break
+		}
+		data = data[n:]
+		var entry BenchRankEntry
+		for len(msg) > 0 {
+			field, fieldType, consumed := protowire.ConsumeTag(msg)
+			if consumed < 0 {
+				break
+			}
+			msg = msg[consumed:]
+			switch fieldType {
+			case protowire.VarintType:
+				v, consumed := protowire.ConsumeVarint(msg)
+				if consumed < 0 {
+					break
+				}
+				msg = msg[consumed:]
+				switch field {
+				case 1:
+					entry.Rank = uint32(v)
+				case 2:
+					entry.PlayerId = v
+				case 4:
+					entry.Level = uint32(v)
+				case 5:
+					entry.Score = v
+				}
+			case protowire.BytesType:
+				v, consumed := protowire.ConsumeBytes(msg)
+				if consumed < 0 {
+					break
+				}
+				msg = msg[consumed:]
+				switch field {
+				case 3:
+					entry.Name = string(v)
+				case 6:
+					entry.Guild = string(v)
+				}
+			default:
+				consumed = protowire.ConsumeFieldValue(field, fieldType, msg)
+				if consumed < 0 {
+					break
+				}
+				msg = msg[consumed:]
+			}
+		}
+		entries = append(entries, entry)
+	}
+	return entries
 }
 
 func decodeTasksProto(data []byte) []BenchTaskDto {
@@ -1786,6 +2094,99 @@ func encodeTasksProto(tasks []BenchTaskDto) []byte {
 func encodeJSON(v any) []byte    { d, _ := json.Marshal(v); return d }
 func encodeMsgpack(v any) []byte { d, _ := msgpack.Marshal(v); return d }
 
+type benchRPCEnvelope struct {
+	PacketID uint32 `json:"packet_id" msgpack:"packet_id"`
+	Sequence uint64 `json:"sequence" msgpack:"sequence"`
+	Kind     uint32 `json:"kind" msgpack:"kind"`
+	Flags    uint32 `json:"flags" msgpack:"flags"`
+	Payload  []byte `json:"payload" msgpack:"payload"`
+}
+
+func benchMakeRPCEnvelope(payload []byte) benchRPCEnvelope {
+	return benchRPCEnvelope{
+		PacketID: 2001,
+		Sequence: 99,
+		Kind:     1,
+		Flags:    1,
+		Payload:  payload,
+	}
+}
+
+func appendRPCEnvelopeBmsg(dst []byte, payload []byte) []byte {
+	dst = AppendFieldHeader(dst, 1, WireTypeVarint)
+	dst = AppendVarint(dst, 2001)
+	dst = AppendFieldHeader(dst, 2, WireTypeVarint)
+	dst = AppendVarint(dst, 99)
+	dst = AppendFieldHeader(dst, 3, WireTypeVarint)
+	dst = AppendVarint(dst, 1)
+	dst = AppendFieldHeader(dst, 4, WireTypeVarint)
+	dst = AppendVarint(dst, 1)
+	dst = AppendFieldHeader(dst, 5, WireTypeLengthDelimited)
+	return AppendBytes(dst, payload)
+}
+
+func encodeRPCEnvelopeBmsg(payload []byte) []byte {
+	return appendRPCEnvelopeBmsg(make([]byte, 0, len(payload)+16), payload)
+}
+
+func encodeRPCEnvelopeProto(payload []byte) []byte {
+	return appendRPCEnvelopeProto(make([]byte, 0, len(payload)+16), payload)
+}
+
+func appendRPCEnvelopeProto(dst []byte, payload []byte) []byte {
+	dst = protowire.AppendTag(dst, 1, protowire.VarintType)
+	dst = protowire.AppendVarint(dst, 2001)
+	dst = protowire.AppendTag(dst, 2, protowire.VarintType)
+	dst = protowire.AppendVarint(dst, 99)
+	dst = protowire.AppendTag(dst, 3, protowire.VarintType)
+	dst = protowire.AppendVarint(dst, 1)
+	dst = protowire.AppendTag(dst, 4, protowire.VarintType)
+	dst = protowire.AppendVarint(dst, 1)
+	dst = protowire.AppendTag(dst, 5, protowire.BytesType)
+	return protowire.AppendBytes(dst, payload)
+}
+
+func decodeRPCEnvelopeBmsgPayload(data []byte) []byte {
+	dec := NewSliceDecoder(data)
+	for !dec.EOF() {
+		tag, wt, err := dec.ReadFieldHeader()
+		if err != nil {
+			return nil
+		}
+		if tag == 5 && wt == WireTypeLengthDelimited {
+			payload, _ := dec.ReadBytesView()
+			return payload
+		}
+		if err := dec.SkipField(wt); err != nil {
+			return nil
+		}
+	}
+	return nil
+}
+
+func decodeRPCEnvelopeProtoPayload(data []byte) []byte {
+	for len(data) > 0 {
+		num, typ, n := protowire.ConsumeTag(data)
+		if n < 0 {
+			return nil
+		}
+		data = data[n:]
+		if num == 5 && typ == protowire.BytesType {
+			payload, n := protowire.ConsumeBytes(data)
+			if n < 0 {
+				return nil
+			}
+			return payload
+		}
+		n = protowire.ConsumeFieldValue(num, typ, data)
+		if n < 0 {
+			return nil
+		}
+		data = data[n:]
+	}
+	return nil
+}
+
 // ==================== 测试: 体积对比 ====================
 
 func TestBenchmark_SizeComparison(t *testing.T) {
@@ -1808,6 +2209,7 @@ func TestBenchmark_SizeComparison(t *testing.T) {
 		{"玩家信息 (10 fields)", len(encodePlayerBmsg(player)), len(encodePlayerProto(player)), len(encodeJSON(player)), len(encodeMsgpack(player))},
 		{"聊天消息 (5 fields)", len(encodeChatBmsg2(chat)), len(encodeChatProto(chat)), len(encodeJSON(chat)), len(encodeMsgpack(chat))},
 		{"ChatDto 全类型 (list/map/custom)", len(encodeChatDtoBmsg(chatDto)), len(encodeChatDtoProto(chatDto)), len(encodeJSON(chatDto)), len(encodeMsgpack(chatDto))},
+		{"RPC envelope + ChatDto payload (1x)", len(encodeRPCEnvelopeBmsg(encodeChatDtoBmsg(chatDto))), len(encodeRPCEnvelopeProto(encodeChatDtoProto(chatDto))), len(encodeJSON(benchMakeRPCEnvelope(encodeJSON(chatDto)))), len(encodeMsgpack(benchMakeRPCEnvelope(encodeMsgpack(chatDto))))},
 		{"战斗输入 (10人×8 fields)", len(encodeInputsBmsg(inputs)), len(encodeInputsProto(inputs)), len(encodeJSON(inputs)), len(encodeMsgpack(inputs))},
 		{"任务列表 (100 TaskDto×9 fields)", len(encodeTasksBmsg(tasks)), len(encodeTasksProto(tasks)), len(encodeJSON(tasks)), len(encodeMsgpack(tasks))},
 		{"排行榜 (100人×6 fields)", len(encodeLeaderboardBmsg2(lb)), len(encodeLeaderboardProto(lb)), len(encodeJSON(lb)), len(encodeMsgpack(lb))},
@@ -1854,6 +2256,15 @@ func TestBenchmark_ChatDtoAllTypesRoundTrip(t *testing.T) {
 	}
 }
 
+func TestBenchmark_RPCEnvelopeRoundTrip(t *testing.T) {
+	payload := encodeChatDtoBmsg(benchMakeChatDto())
+	envelope := encodeRPCEnvelopeBmsg(payload)
+	got := decodeRPCEnvelopeBmsgPayload(envelope)
+	if !bytes.Equal(got, payload) {
+		t.Fatalf("RPC envelope payload mismatch")
+	}
+}
+
 func TestBenchmark_TaskColumnRoundTrip(t *testing.T) {
 	tasks := benchMakeTasks(100)
 	data := encodeTasksBmsgColumn(tasks)
@@ -1864,6 +2275,36 @@ func TestBenchmark_TaskColumnRoundTrip(t *testing.T) {
 	for i := range tasks {
 		if got[i] != tasks[i] {
 			t.Fatalf("task[%d] = %#v, want %#v", i, got[i], tasks[i])
+		}
+	}
+}
+
+func TestBenchmark_BattleColumnRoundTrip(t *testing.T) {
+	inputs := benchMakeBattleInputs()
+	data := encodeInputsBmsg(inputs)
+	var state benchBattleColumnDecodeState
+	got := state.decode(data)
+	if len(got) != len(inputs) {
+		t.Fatalf("decoded input count = %d, want %d", len(got), len(inputs))
+	}
+	for i := range inputs {
+		if got[i] != inputs[i] {
+			t.Fatalf("input[%d] = %#v, want %#v", i, got[i], inputs[i])
+		}
+	}
+}
+
+func TestBenchmark_LeaderboardColumnRoundTrip(t *testing.T) {
+	entries := benchMakeLeaderboard()
+	data := encodeLeaderboardBmsg2(entries)
+	var state benchLeaderboardColumnDecodeState
+	got := state.decode(data)
+	if len(got) != len(entries) {
+		t.Fatalf("decoded leaderboard count = %d, want %d", len(got), len(entries))
+	}
+	for i := range entries {
+		if got[i] != entries[i] {
+			t.Fatalf("entry[%d] = %#v, want %#v", i, got[i], entries[i])
 		}
 	}
 }
@@ -1955,6 +2396,45 @@ func BenchmarkEncode_ChatDtoAllTypes_Msgpack(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		encodeMsgpack(c)
+	}
+}
+
+func BenchmarkEncode_RPCEnvelope_ByteMsg233(b *testing.B) {
+	c := benchMakeChatDto()
+	payload := make([]byte, 0, len(encodeChatDtoBmsg(c)))
+	envelope := make([]byte, 0, len(payload)+16)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		payload = encodeChatDtoBmsgAppend(payload[:0], c)
+		_ = appendRPCEnvelopeBmsg(envelope[:0], payload)
+	}
+}
+
+func BenchmarkEncode_RPCEnvelope_Proto(b *testing.B) {
+	c := benchMakeChatDto()
+	envelope := make([]byte, 0, len(encodeChatDtoProto(c))+16)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		payload := encodeChatDtoProto(c)
+		_ = appendRPCEnvelopeProto(envelope[:0], payload)
+	}
+}
+
+func BenchmarkEncode_RPCEnvelope_JSON(b *testing.B) {
+	c := benchMakeChatDto()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		payload := encodeJSON(c)
+		encodeJSON(benchMakeRPCEnvelope(payload))
+	}
+}
+
+func BenchmarkEncode_RPCEnvelope_Msgpack(b *testing.B) {
+	c := benchMakeChatDto()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		payload := encodeMsgpack(c)
+		encodeMsgpack(benchMakeRPCEnvelope(payload))
 	}
 }
 
@@ -2140,26 +2620,66 @@ func BenchmarkDecode_ChatDtoAllTypes_Msgpack(b *testing.B) {
 	}
 }
 
-func BenchmarkDecode_Battle_ByteMsg233(b *testing.B) {
-	data := encodeInputsBmsg(benchMakeBattleInputs())
+func BenchmarkDecode_RPCEnvelope_ByteMsg233(b *testing.B) {
+	data := encodeRPCEnvelopeBmsg(encodeChatDtoBmsg(benchMakeChatDto()))
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		dec := NewSliceDecoder(data)
-		cnt, _ := dec.ReadVarint()
-		for j := uint64(0); j < cnt; j++ {
-			for {
-				tag, _, err := dec.ReadFieldHeader()
-				if err != nil || tag == 0 {
-					break
-				}
-				dec.ReadVarint()
-			}
-		}
+		payload := decodeRPCEnvelopeBmsgPayload(data)
+		decodeChatDtoBmsg(payload)
+	}
+}
+
+func BenchmarkDecode_RPCEnvelope_Proto(b *testing.B) {
+	data := encodeRPCEnvelopeProto(encodeChatDtoProto(benchMakeChatDto()))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		payload := decodeRPCEnvelopeProtoPayload(data)
+		decodeChatDtoProto(payload)
+	}
+}
+
+func BenchmarkDecode_RPCEnvelope_JSON(b *testing.B) {
+	var envelope benchRPCEnvelope
+	var c BenchChatDto
+	data := encodeJSON(benchMakeRPCEnvelope(encodeJSON(benchMakeChatDto())))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		json.Unmarshal(data, &envelope)
+		json.Unmarshal(envelope.Payload, &c)
+	}
+}
+
+func BenchmarkDecode_RPCEnvelope_Msgpack(b *testing.B) {
+	var envelope benchRPCEnvelope
+	var c BenchChatDto
+	data := encodeMsgpack(benchMakeRPCEnvelope(encodeMsgpack(benchMakeChatDto())))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		msgpack.Unmarshal(data, &envelope)
+		msgpack.Unmarshal(envelope.Payload, &c)
+	}
+}
+
+func BenchmarkDecode_Battle_ByteMsg233(b *testing.B) {
+	inputs := benchMakeBattleInputs()
+	data := encodeInputsBmsg(inputs)
+	var state benchBattleColumnDecodeState
+	state.prewarm(len(inputs))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		state.decode(data)
+	}
+}
+func BenchmarkDecode_Battle_Proto(b *testing.B) {
+	data := encodeInputsProto(benchMakeBattleInputs())
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		decodeInputsProto(data)
 	}
 }
 func BenchmarkDecode_Battle_Msgpack(b *testing.B) {
 	var in []BenchBattleInput
-	data := encodeMsgpack(in)
+	data := encodeMsgpack(benchMakeBattleInputs())
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		msgpack.Unmarshal(data, &in)
@@ -2167,10 +2687,47 @@ func BenchmarkDecode_Battle_Msgpack(b *testing.B) {
 }
 func BenchmarkDecode_Battle_JSON(b *testing.B) {
 	var in []BenchBattleInput
-	data := encodeJSON(in)
+	data := encodeJSON(benchMakeBattleInputs())
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		json.Unmarshal(data, &in)
+	}
+}
+
+func BenchmarkDecode_Leaderboard_ByteMsg233(b *testing.B) {
+	entries := benchMakeLeaderboard()
+	data := encodeLeaderboardBmsg2(entries)
+	var state benchLeaderboardColumnDecodeState
+	state.prewarm(len(entries))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		state.decode(data)
+	}
+}
+
+func BenchmarkDecode_Leaderboard_Proto(b *testing.B) {
+	data := encodeLeaderboardProto(benchMakeLeaderboard())
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		decodeLeaderboardProto(data)
+	}
+}
+
+func BenchmarkDecode_Leaderboard_JSON(b *testing.B) {
+	var entries []BenchRankEntry
+	data := encodeJSON(benchMakeLeaderboard())
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		json.Unmarshal(data, &entries)
+	}
+}
+
+func BenchmarkDecode_Leaderboard_Msgpack(b *testing.B) {
+	var entries []BenchRankEntry
+	data := encodeMsgpack(benchMakeLeaderboard())
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		msgpack.Unmarshal(data, &entries)
 	}
 }
 

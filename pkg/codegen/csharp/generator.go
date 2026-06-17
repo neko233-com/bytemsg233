@@ -33,6 +33,8 @@ func (g *Generator) Generate(s *schema.Schema, options *codegen.GenerateOptions)
 	buf.WriteString("using System;\n")
 	buf.WriteString("using System.Collections.Generic;\n\n")
 	buf.WriteString(fmt.Sprintf("namespace %s\n{\n", namespace))
+	g.generateProtocolConstants(&buf, s, 1)
+	buf.WriteString("\n")
 
 	for _, name := range codegen.SortedEnumNames(s) {
 		g.generateEnum(&buf, name, s.Enums[name], 1)
@@ -49,6 +51,15 @@ func (g *Generator) Generate(s *schema.Schema, options *codegen.GenerateOptions)
 	return []*codegen.GeneratedFile{
 		{Path: "ByteMsg233_Export" + g.FileExtension(), Content: []byte(buf.String())},
 	}, nil
+}
+
+func (g *Generator) generateProtocolConstants(buf *strings.Builder, s *schema.Schema, indent int) {
+	indentStr := strings.Repeat("\t", indent)
+	buf.WriteString(fmt.Sprintf("%spublic static class ByteMsgProtocolInfo\n", indentStr))
+	buf.WriteString(fmt.Sprintf("%s{\n", indentStr))
+	buf.WriteString(fmt.Sprintf("%s\tpublic const ulong Version = %dUL;\n", indentStr, s.ProtocolVersion))
+	buf.WriteString(fmt.Sprintf("%s\tpublic static ulong GetByteMsg233ProtocolVersion() => Version;\n", indentStr))
+	buf.WriteString(fmt.Sprintf("%s}\n", indentStr))
 }
 
 func (g *Generator) generateEnum(buf *strings.Builder, name string, enum *schema.Enum, indent int) {

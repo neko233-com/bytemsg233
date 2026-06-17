@@ -2,10 +2,11 @@ package schema
 
 // Schema represents a complete ByteMsg233 schema file.
 type Schema struct {
-	Version  string              `yaml:"schema" json:"schema"`
-	Package  string              `yaml:"package" json:"package"`
-	Messages map[string]*Message `yaml:"messages" json:"messages"`
-	Enums    map[string]*Enum    `yaml:"enums" json:"enums"`
+	Version         string              `yaml:"schema" json:"schema"`
+	ProtocolVersion uint64              `yaml:"protocolVersion,omitempty" json:"protocolVersion,omitempty"`
+	Package         string              `yaml:"package" json:"package"`
+	Messages        map[string]*Message `yaml:"messages" json:"messages"`
+	Enums           map[string]*Enum    `yaml:"enums" json:"enums"`
 }
 
 // Message represents a message type definition

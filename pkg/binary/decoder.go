@@ -18,7 +18,10 @@ type Decoder struct {
 	r ByteReader
 }
 
-var errVarintOverflow = errors.New("binary: varint overflows a 64-bit integer")
+var (
+	errVarintOverflow      = errors.New("binary: varint overflows a 64-bit integer")
+	errUnsupportedWireType = errors.New("binary: unsupported wire type")
+)
 
 // NewDecoder creates a new decoder
 func NewDecoder(r ByteReader) *Decoder {
@@ -100,6 +103,29 @@ func (d *Decoder) ReadFieldHeader() (tag int, wireType int, err error) {
 	tag = int(v >> 3)
 	wireType = int(v & 0x7)
 	return tag, wireType, nil
+}
+
+// SkipField consumes one unknown field by wire type.
+//
+// Generated decoders use this to keep old readers compatible with new fields:
+// known tags can be decoded in any order, and unknown tags are skipped.
+func (d *Decoder) SkipField(wireType int) error {
+	switch wireType {
+	case WireTypeVarint:
+		_, err := d.ReadVarint()
+		return err
+	case WireTypeFixed64:
+		_, err := d.ReadFixed64()
+		return err
+	case WireTypeLengthDelimited:
+		_, err := d.ReadBytes()
+		return err
+	case WireTypeFixed32:
+		_, err := d.ReadFixed32()
+		return err
+	default:
+		return errUnsupportedWireType
+	}
 }
 
 // SliceDecoder reads binary data directly from a byte slice.
@@ -399,6 +425,26 @@ func (d *SliceDecoder) ReadFieldHeader() (tag int, wireType int, err error) {
 		}
 	}
 	return int(value >> 3), int(value & 0x7), nil
+}
+
+// SkipField consumes one unknown field by wire type without copying bytes.
+func (d *SliceDecoder) SkipField(wireType int) error {
+	switch wireType {
+	case WireTypeVarint:
+		_, err := d.ReadVarint()
+		return err
+	case WireTypeFixed64:
+		_, err := d.ReadFixed64()
+		return err
+	case WireTypeLengthDelimited:
+		_, err := d.ReadBytesView()
+		return err
+	case WireTypeFixed32:
+		_, err := d.ReadFixed32()
+		return err
+	default:
+		return errUnsupportedWireType
+	}
 }
 
 func (d *SliceDecoder) readVarintSlow() (uint64, error) {

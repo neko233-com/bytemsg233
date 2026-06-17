@@ -39,6 +39,9 @@ func (g *Generator) Generate(s *schema.Schema, options *codegen.GenerateOptions)
 		buf.WriteString("\t}\n")
 		buf.WriteString("}\n\n")
 	}
+	buf.WriteString(fmt.Sprintf("export const ByteMsgProtocolVersion = %d;\n", s.ProtocolVersion))
+	buf.WriteString("export function getByteMsg233ProtocolVersion(): number { return ByteMsgProtocolVersion; }\n")
+	buf.WriteString("\n")
 
 	for _, name := range codegen.SortedEnumNames(s) {
 		g.generateEnum(&buf, name, s.Enums[name])

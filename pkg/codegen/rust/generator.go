@@ -39,6 +39,9 @@ func (g *Generator) Generate(s *schema.Schema, options *codegen.GenerateOptions)
 		buf.WriteString("    pub fn release(&mut self, mut value: T) { value.reset(); self.items.push(value); }\n")
 		buf.WriteString("}\n\n")
 	}
+	buf.WriteString(fmt.Sprintf("pub const BYTE_MSG_PROTOCOL_VERSION: u64 = %d;\n", s.ProtocolVersion))
+	buf.WriteString("pub fn get_bytemsg233_protocol_version() -> u64 { BYTE_MSG_PROTOCOL_VERSION }\n")
+	buf.WriteString("\n")
 
 	for _, name := range codegen.SortedEnumNames(s) {
 		g.generateEnum(&buf, name, s.Enums[name])

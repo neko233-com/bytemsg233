@@ -11,8 +11,9 @@ import (
 func TestTypeScriptGenerator(t *testing.T) {
 	gen := New()
 	s := &schema.Schema{
-		Version: "bymsg/v1",
-		Package: "user",
+		Version:         "bymsg/v1",
+		ProtocolVersion: 7,
+		Package:         "user",
 		Messages: map[string]*schema.Message{
 			"UserProfile": {
 				Description: &schema.Description{En: "User profile"},
@@ -43,6 +44,11 @@ func TestTypeScriptGenerator(t *testing.T) {
 	}
 	if !strings.Contains(content, "export class UserProfile") {
 		t.Error("Expected UserProfile class")
+	}
+	if !strings.Contains(content, "export const ByteMsgProtocolVersion = 7;") ||
+		!strings.Contains(content, "export function getByteMsg233ProtocolVersion(): number") ||
+		strings.Contains(content, "ByteMsgProtocolFingerprint") {
+		t.Error("Expected only protocol version constant")
 	}
 	if !strings.Contains(content, "/** User profile */") {
 		t.Error("Expected class comment")

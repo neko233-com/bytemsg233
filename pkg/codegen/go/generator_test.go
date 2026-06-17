@@ -23,8 +23,9 @@ func TestGoGenerator(t *testing.T) {
 	}
 
 	s := &schema.Schema{
-		Version: "bymsg/v1",
-		Package: "user",
+		Version:         "bymsg/v1",
+		ProtocolVersion: 7,
+		Package:         "user",
 		Messages: map[string]*schema.Message{
 			"UserProfile": {
 				Description: &schema.Description{En: "User profile"},
@@ -63,6 +64,15 @@ func TestGoGenerator(t *testing.T) {
 	}
 	if !strings.Contains(content, "type UserProfile struct") {
 		t.Error("Expected UserProfile struct")
+	}
+	if !strings.Contains(content, "ByteMsgProtocolVersion uint64 = 7") || strings.Contains(content, "ByteMsgProtocolFingerprint") {
+		t.Error("Expected only protocol version constant")
+	}
+	if !strings.Contains(content, "type IByteMsg233Api interface") ||
+		!strings.Contains(content, "SerializeByteMsg233() ([]byte, error)") ||
+		!strings.Contains(content, "DeserializeFromByteMsg233(data []byte) error") ||
+		!strings.Contains(content, "func GetByteMsg233ProtocolVersion() uint64") {
+		t.Error("Expected ByteMsg233 API interface and protocol version helper")
 	}
 	if !strings.Contains(content, "// User profile") {
 		t.Error("Expected class comment")
@@ -241,9 +251,12 @@ const generatedGoRoundTripTest = `package protocol
 
 import (
 	"bytes"
+	"encoding/binary"
 	"reflect"
 	"strings"
 	"testing"
+
+	bytemsgBinary "github.com/neko233-com/bytemsg233/pkg/binary"
 )
 
 func TestGeneratedRoundTripAndRegistry(t *testing.T) {
@@ -325,6 +338,76 @@ func TestGeneratedEmptyPacketZeroAlloc(t *testing.T) {
 	})
 	if allocs != 0 {
 		t.Fatalf("empty packet MarshalByteMsgTo/UnmarshalByteMsg allocs = %v, want 0", allocs)
+	}
+}
+
+func TestGeneratedSkipsUnknownFields(t *testing.T) {
+	source := &Player{
+		Id: 77,
+		Active: true,
+		Power: 9.5,
+		Mood: PlayerMoodAngry,
+		Tags: []string{"future-safe"},
+		Attrs: map[string]uint32{"hp": 99},
+		Inner: Inner{Score: 5, Label: "inner"},
+		Payload: []byte{9, 8, 7},
+	}
+	var known bytes.Buffer
+	if err := source.MarshalByteMsgTo(&known); err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	var data []byte
+	data = bytemsgBinary.AppendFieldHeader(data, 99, byteMsgWireTypeVarint)
+	data = bytemsgBinary.AppendVarint(data, 9001)
+	data = bytemsgBinary.AppendFieldHeader(data, 100, byteMsgWireTypeLengthDelimited)
+	data = bytemsgBinary.AppendString(data, "future")
+	data = append(data, known.Bytes()...)
+	data = bytemsgBinary.AppendFieldHeader(data, 101, byteMsgWireTypeFixed32)
+	var fixed32 [4]byte
+	binary.LittleEndian.PutUint32(fixed32[:], 0x12345678)
+	data = append(data, fixed32[:]...)
+	data = bytemsgBinary.AppendFieldHeader(data, 102, byteMsgWireTypeFixed64)
+	var fixed64 [8]byte
+	binary.LittleEndian.PutUint64(fixed64[:], 0x0102030405060708)
+	data = append(data, fixed64[:]...)
+
+	target := AcquirePlayer()
+	defer ReleasePlayer(target)
+	if err := target.UnmarshalByteMsg(data); err != nil {
+		t.Fatalf("unmarshal with unknown fields: %v", err)
+	}
+	if target.Id != source.Id || target.Inner.Label != source.Inner.Label || string(target.Payload) != string(source.Payload) {
+		t.Fatalf("known fields changed after unknown skip: %#v", target)
+	}
+}
+
+func TestGeneratedResetReusesStorage(t *testing.T) {
+	player := &Player{
+		Tags: []string{"a", "b"},
+		Attrs: map[string]uint32{"hp": 1},
+		Nested: map[string][]uint32{"x": {1, 2}},
+		Inners: []Inner{{Score: 1, Label: "a"}},
+		Payload: []byte{1, 2, 3, 4},
+	}
+	tagsCap := cap(player.Tags)
+	innersCap := cap(player.Inners)
+	payloadCap := cap(player.Payload)
+	player.Reset()
+	if len(player.Tags) != 0 || cap(player.Tags) != tagsCap {
+		t.Fatalf("tags storage was not reused")
+	}
+	if player.Attrs == nil || len(player.Attrs) != 0 {
+		t.Fatalf("attrs map was not cleared in place")
+	}
+	if player.Nested == nil || len(player.Nested) != 0 {
+		t.Fatalf("nested map was not cleared in place")
+	}
+	if len(player.Inners) != 0 || cap(player.Inners) != innersCap {
+		t.Fatalf("inners storage was not reused")
+	}
+	if len(player.Payload) != 0 || cap(player.Payload) != payloadCap {
+		t.Fatalf("payload bytes storage was not reused")
 	}
 }
 

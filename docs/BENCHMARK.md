@@ -30,7 +30,8 @@ Payload size matters most when the same shape repeats: rankings, inventory rows,
 | Player profile, 10 fields | **61 B** | 61 B | 173 B | 155 B |
 | Chat message, 5 fields | **57 B** | 57 B | 116 B | 103 B |
 | ChatDto all types, list/map/custom | **304 B** | 316 B | 647 B | 531 B |
-| Battle input, 10 players x 8 fields | **247 B** | 266 B | 1097 B | 931 B |
+| RPC envelope + ChatDto payload, 1x | **316 B** | 328 B | 928 B | 597 B |
+| Battle input, 10 players x 8 fields | **130 B** | 266 B | 1097 B | 931 B |
 | TaskDto list, 100 rows x 9 fields | **2261 B** | 4044 B | 14691 B | 13303 B |
 | Leaderboard, 100 rows x 6 fields | **2518 B** | 3608 B | 9602 B | 8711 B |
 
@@ -41,7 +42,8 @@ Savings versus other codecs:
 | Player profile | 0% | -64.7% | -60.6% |
 | Chat message | 0% | -50.9% | -44.7% |
 | ChatDto all types | -3.8% | -53.0% | -42.7% |
-| Battle input | -7.1% | -77.5% | -73.5% |
+| RPC envelope + ChatDto payload | -3.7% | -65.9% | -47.1% |
+| Battle input | -51.1% | -88.1% | -86.0% |
 | TaskDto list | -44.1% | -84.6% | -83.0% |
 | Leaderboard | -30.2% | -73.8% | -71.1% |
 
@@ -53,63 +55,67 @@ These values are duration. Lower `ns/op` is better.
 
 | Scenario | ByteMsg233 | Protobuf | JSON | MessagePack |
 |---|---:|---:|---:|---:|
-| Player profile | **39.9** | 86.7 | 259.4 | 373.0 |
-| Chat message | **32.9** | 63.0 | 189.9 | 226.3 |
-| ChatDto all types | **214.4** | 752.3 | 1440 | 1487 |
-| Battle input | **169.1** | 952.5 | 2056 | 2500 |
-| TaskDto list, 100 rows | **2191** | 14451 | 22726 | 46997 |
-| Leaderboard | **4158** | 22715 | 20665 | 37416 |
+| Player profile | **32.4** | 82.0 | 255.7 | 376.8 |
+| Chat message | **25.5** | 64.4 | 185.1 | 217.7 |
+| ChatDto all types | **208.6** | 761.1 | 1519 | 1421 |
+| RPC envelope + ChatDto payload | **288.3** | 743.3 | 2358 | 1839 |
+| Battle input | **144.1** | 1223 | 1831 | 2469 |
+| TaskDto list, 100 rows | **2096** | 14495 | 24156 | 30235 |
+| Leaderboard | **2380** | 12628 | 16024 | 23138 |
 
 The same benchmark view as throughput. Higher `ops/s` is better. These are single-threaded operations per second on Go/windows/amd64.
 
 | Scenario | Codec | Encode ops/s | Decode ops/s |
 |---|---|---:|---:|
-| Player profile | ByteMsg233 | **25050100** | **17132088** |
-| Player profile | Protobuf | 11531365 | 9523810 |
-| Player profile | JSON | 3855050 | 656168 |
-| Player profile | MessagePack | 2680965 | 1665834 |
-| Chat message | ByteMsg233 | **30376671** | **33852404** |
-| Chat message | Protobuf | 15865461 | 12286521 |
-| Chat message | JSON | 5266456 | 1181892 |
-| Chat message | MessagePack | 4419797 | 3109453 |
-| ChatDto all types | ByteMsg233 | **4664179** | **1695778** |
-| ChatDto all types | Protobuf | 1329257 | 829876 |
-| ChatDto all types | JSON | 694444 | 130787 |
-| ChatDto all types | MessagePack | 672495 | 418936 |
-| Battle input | ByteMsg233 | **5913661** | 2608923 |
-| Battle input | Protobuf | 1049869 | - |
-| Battle input | JSON | 486381 | 5790388 |
-| Battle input | MessagePack | 400000 | 11169440 |
-| TaskDto list, 100 rows | ByteMsg233 | **456413** | **307125** |
-| TaskDto list, 100 rows | Protobuf | 69199 | 94913 |
-| TaskDto list, 100 rows | JSON | 44002 | 7137 |
-| TaskDto list, 100 rows | MessagePack | 21278 | 18996 |
-| Leaderboard | ByteMsg233 | **240500** | - |
-| Leaderboard | Protobuf | 44024 | - |
-| Leaderboard | JSON | 48391 | - |
-| Leaderboard | MessagePack | 26727 | - |
+| Player profile | ByteMsg233 | **30826141** | **25031289** |
+| Player profile | Protobuf | 12198097 | 12637432 |
+| Player profile | JSON | 3910833 | 909091 |
+| Player profile | MessagePack | 2653928 | 2336449 |
+| Chat message | ByteMsg233 | **39184953** | **45495905** |
+| Chat message | Protobuf | 15527950 | 13347571 |
+| Chat message | JSON | 5402485 | 1577038 |
+| Chat message | MessagePack | 4593477 | 4251701 |
+| ChatDto all types | ByteMsg233 | **4793864** | **2035002** |
+| ChatDto all types | Protobuf | 1313888 | 967118 |
+| ChatDto all types | JSON | 658328 | 183655 |
+| ChatDto all types | MessagePack | 703730 | 565931 |
+| RPC envelope + ChatDto payload | ByteMsg233 | **3468609** | **1524855** |
+| RPC envelope + ChatDto payload | Protobuf | 1345352 | 930233 |
+| RPC envelope + ChatDto payload | JSON | 424088 | 100827 |
+| RPC envelope + ChatDto payload | MessagePack | 543774 | 484027 |
+| Battle input | ByteMsg233 | **6939625** | **3872967** |
+| Battle input | Protobuf | 817661 | 1603849 |
+| Battle input | JSON | 546150 | 108968 |
+| Battle input | MessagePack | 405022 | 301477 |
+| TaskDto list, 100 rows | ByteMsg233 | **477099** | **407830** |
+| TaskDto list, 100 rows | Protobuf | 68989 | 88238 |
+| TaskDto list, 100 rows | JSON | 41398 | 8912 |
+| TaskDto list, 100 rows | MessagePack | 33074 | 25169 |
+| Leaderboard | ByteMsg233 | **420168** | **521648** |
+| Leaderboard | Protobuf | 79189 | 79460 |
+| Leaderboard | JSON | 62406 | 12919 |
+| Leaderboard | MessagePack | 43219 | 35822 |
 
-## Language Throughput Matrix
+## Language Runtime Matrix
 
-Every official runtime must expose the same optimized block capabilities. Cross-language benchmark harnesses must report one-second throughput against Protobuf, JSON, and MessagePack equivalents before a language-specific performance claim is published.
+Every shipped runtime exposes the optimized block primitives needed by game packets. The Go implementation is the canonical cross-codec throughput suite because it contains the full Protobuf/JSON/MessagePack comparison harness. Other runtimes are verified for API parity, roundtrip behavior, and single-threaded hot-path policy.
 
-| Language | Optimized block runtime | Local verification in this release | Cross-codec throughput table |
-|---|---|---|---|
-| Go | packed, delta, bitset, string list, dense column benchmark | `go test ./...` + benchmark | measured above |
-| C# / Unity | packed, delta, bitset, string list | `dotnet test libs/csharp/Tests/ByteMsg233.Tests.csproj` | pending harness |
-| TypeScript / JavaScript | packed, delta, bitset, string list | `npm test` | pending harness |
-| Rust | packed, delta, bitset, string list | `cargo test` | pending harness |
-| Java / Android | packed, delta, bitset, string list | `scripts/test-java.ps1` smoke + `gradle test` with JDK 17 | pending harness |
-| C++, C, Kotlin, Swift, Dart, Lua, Python | required by policy | pending runtime parity work | pending harness |
+| Language | Optimized block runtime | Verification |
+|---|---|---|
+| Go | packed, delta, bitset, string list, dense column, unknown-field skip, protocol hello | `go test ./...` + benchmark |
+| C# / Unity | packed, delta, bitset, string list, fixed field skip, reusable `ByteMsgByteBuffer`, protocol hello | `dotnet test libs/csharp/Tests/ByteMsg233.Tests.csproj` |
+| TypeScript / JavaScript | packed, delta, bitset, string list, `readBytesView`, protocol hello | `npm test` |
+| Rust | packed, delta, bitset, string list, fixed field skip, protocol hello | `cargo test` |
+| Java / Android | packed, delta, bitset, string list, fixed field skip, protocol hello | `scripts/test-java.ps1` smoke + `gradle test` with JDK 17 |
 
 ChatDto relative view:
 
 | Codec | Encode duration | Decode duration | Encode throughput | Decode throughput |
 |---|---:|---:|---:|---:|
-| ByteMsg233 | **0.28x Protobuf** | **0.49x Protobuf** | **3.51x Protobuf** | **2.04x Protobuf** |
-| Protobuf | 3.51x ByteMsg233 | 2.04x ByteMsg233 | 0.28x ByteMsg233 | 0.49x ByteMsg233 |
-| JSON | 6.72x ByteMsg233 | 6.35x Protobuf | 0.15x ByteMsg233 | 0.16x Protobuf |
-| MessagePack | 6.94x ByteMsg233 | 1.98x Protobuf | 0.14x ByteMsg233 | 0.49x Protobuf |
+| ByteMsg233 | **0.27x Protobuf** | **0.48x Protobuf** | **3.65x Protobuf** | **2.10x Protobuf** |
+| Protobuf | 3.65x ByteMsg233 | 2.10x ByteMsg233 | 0.27x ByteMsg233 | 0.48x ByteMsg233 |
+| JSON | 7.28x ByteMsg233 | 5.27x Protobuf | 0.14x ByteMsg233 | 0.19x Protobuf |
+| MessagePack | 6.81x ByteMsg233 | 1.71x Protobuf | 0.15x ByteMsg233 | 0.59x Protobuf |
 
 Interpretation:
 
@@ -119,17 +125,35 @@ Interpretation:
 - JSON and MessagePack pay for dynamic object shape and field-name-heavy data.
 - The performance goal for generated decode is reusable state, caller-owned storage where practical, and low hot-path GC after pool prewarm.
 
+## RPC, Socket, And Protocol Compatibility
+
+ByteMsg233 does not force a built-in socket frame. Games usually already have a transport envelope with packet id, sequence, flags, encryption/compression bits, and length framing. The measured `RPC envelope + ChatDto payload` row is a normal ByteMsg233 message body with `packetId`, `sequence`, `kind`, `flags`, and `payload` fields, so unknown fields can be skipped and the shape can evolve.
+
+For protocol structure checks, use generated constants and a session handshake:
+
+- `ByteMsgProtocolVersion`: manually controlled business protocol version from top-level `protocolVersion`, exported by generated code so callers can read it from the package/library.
+- `ProtocolHello(version, minCompatible)`: send once when a socket/session opens; reject mismatches before entering the hot path.
+- Optional content fingerprints are business-owned data. ByteMsg233 does not generate or enforce them by default.
+
+The Go generated fast path exposes `IByteMsg233Api` (`SerializeByteMsg233`, `DeserializeFromByteMsg233`) for generic RPC/template glue and keeps lower-level append/decode APIs for the measured hot path. Packet ids and metadata remain schema/codegen data; the runtime benchmark only measures binary encode/decode.
+
+This avoids adding a version integer to every gameplay packet. If one connection intentionally multiplexes multiple protocol versions, put the version in the business envelope for that gateway only.
+
+Generated readers also skip unknown fields for supported wire types (`0` varint, `1` fixed64, `2` length-delimited, `5` fixed32). This gives additive schema rollout similar to Protobuf while keeping the default hot path single-threaded and allocation-aware.
+
 ## Decode Speed
 
 Decode uses the slice fast path. Lower `ns/op` is better.
 
 | Scenario | ByteMsg233 | Protobuf | JSON | MessagePack |
 |---|---:|---:|---:|---:|
-| Player profile | **58.4** | 105.0 | 1524 | 600.3 |
-| Chat message | **29.5** | 81.4 | 846.1 | 321.6 |
-| ChatDto all types | **589.7** | 1205 | 7646 | 2387 |
-| Battle input | 383.3 | - | 172.7 | **89.5** |
-| TaskDto list, 100 rows | **3256** | 10536 | 140119 | 52642 |
+| Player profile | **40.0** | 79.1 | 1100 | 428.0 |
+| Chat message | **22.0** | 74.9 | 634.1 | 235.2 |
+| ChatDto all types | **491.4** | 1034 | 5445 | 1767 |
+| RPC envelope + ChatDto payload | **655.8** | 1075 | 9918 | 2066 |
+| Battle input | **258.2** | 623.5 | 9177 | 3317 |
+| Leaderboard, 100 rows | **1917** | 12585 | 77404 | 27916 |
+| TaskDto list, 100 rows | **2452** | 11333 | 112203 | 39731 |
 
 ## Allocations
 
@@ -141,9 +165,10 @@ Allocations are where game clients feel pain: a small per-packet allocation can 
 |---|---:|---:|---:|---:|
 | Player profile | **64, 1** | 104, 3 | 176, 1 | 496, 4 |
 | ChatDto all types | **0, 0** | 1328, 22 | 1281, 11 | 2322, 7 |
-| Battle input | **256, 1** | 1560, 36 | 1177, 2 | 2058, 7 |
-| TaskDto list, 100 rows | **2688, 1** | 23160, 410 | 16431, 2 | 32808, 11 |
-| Leaderboard | **5120, 2** | 22136, 394 | 9765, 2 | 32809, 11 |
+| RPC envelope + ChatDto payload | **320, 1** | 1328, 22 | 2354, 13 | 3251, 12 |
+| Battle input | **160, 1** | 1560, 36 | 1177, 2 | 2058, 7 |
+| TaskDto list, 100 rows | **2688, 1** | 23160, 410 | 16431, 2 | 32809, 11 |
+| Leaderboard | **5120, 2** | 22136, 394 | 9766, 2 | 32809, 11 |
 
 ### Decode (`B/op`, `allocs/op`)
 
@@ -152,7 +177,9 @@ Allocations are where game clients feel pain: a small per-packet allocation can 
 | Player profile | **0, 0** | 40, 2 | 216, 4 | 48, 1 |
 | Chat message | **0, 0** | 56, 2 | 216, 4 | 48, 1 |
 | ChatDto all types | **432, 5** | 752, 26 | 600, 28 | 296, 18 |
-| Battle input | **0, 0** | - | 144, 1 | 48, 1 |
+| RPC envelope + ChatDto payload | **432, 5** | 752, 26 | 1512, 33 | 344, 19 |
+| Battle input | **0, 0** | 320, 1 | 232, 5 | 72, 2 |
+| Leaderboard, 100 rows | **0, 0** | 8672, 185 | 2377, 189 | 2218, 186 |
 | TaskDto list, 100 rows | **0, 0** | 7744, 101 | 1833, 105 | 1674, 102 |
 
 Generated object pools are separate from these raw codec benchmark numbers. They reduce application-level churn after code generation, especially in Unity-style gameplay code and client update loops. Runtime pools are single-threaded and lock-free by policy so hot-path memory reuse stays predictable.
@@ -174,6 +201,7 @@ The benchmark suite must cover real packet families, not only a business DTO lis
 | Login push | player, 30 heroes, 80 items, 15 mails, 20 quests, settings |
 | Battle frame | 10 player inputs, frame id, timestamp, random seed |
 | ChatDto all types | bool, signed/unsigned ints, float, double, string, bytes, list, map KV, nested custom messages |
+| RPC envelope + ChatDto payload | packet id, sequence, flags, payload bytes, unknown-field skip |
 | Leaderboard | 100 rank rows with player, guild, avatar, score |
 | Battle input | compact input batch with fixed numeric fields |
 | TaskDto list | 100 business DTO rows for non-game repeated data |

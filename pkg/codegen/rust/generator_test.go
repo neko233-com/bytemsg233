@@ -11,8 +11,9 @@ import (
 func TestRustGeneratorPath(t *testing.T) {
 	gen := New()
 	s := &schema.Schema{
-		Version: "bymsg/v1",
-		Package: "test",
+		Version:         "bymsg/v1",
+		ProtocolVersion: 7,
+		Package:         "test",
 		Messages: map[string]*schema.Message{
 			"User": {
 				Fields: map[string]*schema.Field{
@@ -32,5 +33,10 @@ func TestRustGeneratorPath(t *testing.T) {
 	}
 	if !strings.Contains(string(files[0].Content), "pub struct User") {
 		t.Fatal("expected User struct")
+	}
+	if !strings.Contains(string(files[0].Content), "pub const BYTE_MSG_PROTOCOL_VERSION: u64 = 7;") ||
+		!strings.Contains(string(files[0].Content), "pub fn get_bytemsg233_protocol_version() -> u64") ||
+		strings.Contains(string(files[0].Content), "BYTE_MSG_PROTOCOL_FINGERPRINT") {
+		t.Fatal("expected only protocol version constant")
 	}
 }

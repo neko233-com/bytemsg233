@@ -23,7 +23,16 @@ func (g *Generator) Generate(s *schema.Schema, options *codegen.GenerateOptions)
 		defer i18n.SetLocale(prevLocale)
 	}
 
-	files := make([]*codegen.GeneratedFile, 0, len(s.Enums)+len(s.Messages))
+	files := make([]*codegen.GeneratedFile, 0, len(s.Enums)+len(s.Messages)+1)
+	{
+		var buf strings.Builder
+		g.writePackage(&buf, s.Package)
+		g.generateProtocolInfo(&buf, s)
+		files = append(files, &codegen.GeneratedFile{
+			Path:    "ByteMsgProtocolInfo" + g.FileExtension(),
+			Content: []byte(buf.String()),
+		})
+	}
 
 	for _, name := range codegen.SortedEnumNames(s) {
 		var buf strings.Builder
@@ -62,6 +71,14 @@ func (g *Generator) writeMessageImports(buf *strings.Builder) {
 	buf.WriteString("import java.util.HashMap;\n")
 	buf.WriteString("import java.util.List;\n")
 	buf.WriteString("import java.util.Map;\n\n")
+}
+
+func (g *Generator) generateProtocolInfo(buf *strings.Builder, s *schema.Schema) {
+	buf.WriteString("public final class ByteMsgProtocolInfo {\n")
+	buf.WriteString("\tprivate ByteMsgProtocolInfo() {}\n\n")
+	buf.WriteString(fmt.Sprintf("\tpublic static final long VERSION = %dL;\n", s.ProtocolVersion))
+	buf.WriteString("\tpublic static long getByteMsg233ProtocolVersion() { return VERSION; }\n")
+	buf.WriteString("}\n")
 }
 
 func (g *Generator) generateEnum(buf *strings.Builder, name string, enum *schema.Enum) {

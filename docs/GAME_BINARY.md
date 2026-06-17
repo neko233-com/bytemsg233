@@ -80,6 +80,36 @@ Complex packets are expected: login state, heroes with skills, inventory with it
 - Use dense column layout independently at each repeated-message layer; do not force the whole packet into one global layout.
 - Keep a reasonable maximum nesting depth in runtime readers to protect servers from malformed input.
 
+## RPC And Socket Usage
+
+ByteMsg233 intentionally stays transport-neutral. TCP length prefixes, WebSocket frames, UDP/datagram envelopes, encryption flags, compression flags, retry sequence numbers, and gateway routing are business or transport concerns. The binary runtime should encode the message body quickly and let the caller choose the socket frame.
+
+For game RPC, use generated message `packetId` values for routing, or define a normal ByteMsg233 envelope message with fields such as `packetId`, `sequence`, `kind`, `flags`, and `payload bytes`. Because it is still a normal message, it keeps the same schema evolution rules and the same benchmarkable hot path.
+
+Do not add a protocol version integer to every gameplay packet by default. The recommended shape is:
+
+1. Client and server open the socket/session.
+2. Both sides exchange `ProtocolHello(version, minCompatible)`.
+3. If `ByteMsgProtocolVersion` or the compatibility range does not match, reject before entering gameplay traffic.
+4. After the handshake passes, gameplay packets stay small and do not repeat the version.
+
+Only put a version field in every packet when a gateway intentionally multiplexes multiple protocol versions on the same connection.
+
+Generated package metadata can include `packetId` and other schema metadata for business templates, registries, or RPC glue, but ByteMsg233 runtime should remain focused on binary encode/decode. Binary-capable generated targets should expose a light interface shape for generic tooling, such as `IByteMsg233Api` with `SerializeByteMsg233` and `DeserializeFromByteMsg233`, while keeping append-style APIs available for the fastest game loops.
+
+## Forward Compatibility
+
+Adding a new field should not break older generated readers. Unknown fields are skipped by wire type:
+
+| Wire type | Meaning | Skip behavior |
+|---|---|---|
+| `0` | varint | read and discard one varint |
+| `1` | fixed64 | skip 8 bytes |
+| `2` | length-delimited | read length, skip that many bytes |
+| `5` | fixed32 | skip 4 bytes |
+
+Unknown fields are not preserved when an old service re-encodes the message unless business code stores them explicitly. For normal game client/server traffic, the usual flow is to either rely on unknown-field skip for additive rollout or reject incompatible protocol versions during the session handshake. If a team wants content fingerprints, keep them as business-defined handshake fields or envelope fields.
+
 ## Hot-Path Rules
 
 Gameplay code should be boring in the best way:

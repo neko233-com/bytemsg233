@@ -2,6 +2,7 @@ package binary
 
 import (
 	"bytes"
+	"encoding/binary"
 	"testing"
 )
 
@@ -374,5 +375,49 @@ func TestVarintCompactness(t *testing.T) {
 	data := buf.Bytes()
 	if len(data) != 6 {
 		t.Errorf("Expected 6 bytes total (1+2+3), got %d bytes", len(data))
+	}
+}
+
+func TestSliceDecoderSkipUnknownFields(t *testing.T) {
+	var data []byte
+	data = AppendFieldHeader(data, 99, WireTypeVarint)
+	data = AppendVarint(data, 9001)
+	data = AppendFieldHeader(data, 1, WireTypeVarint)
+	data = AppendVarint(data, 42)
+	data = AppendFieldHeader(data, 100, WireTypeLengthDelimited)
+	data = AppendString(data, "future")
+	data = AppendFieldHeader(data, 2, WireTypeLengthDelimited)
+	data = AppendString(data, "stable")
+	data = AppendFieldHeader(data, 101, WireTypeFixed32)
+	var fixed32 [4]byte
+	binary.LittleEndian.PutUint32(fixed32[:], 0x12345678)
+	data = append(data, fixed32[:]...)
+	data = AppendFieldHeader(data, 102, WireTypeFixed64)
+	var fixed64 [8]byte
+	binary.LittleEndian.PutUint64(fixed64[:], 0x0102030405060708)
+	data = append(data, fixed64[:]...)
+
+	dec := NewSliceDecoder(data)
+	var id uint64
+	var name string
+	for !dec.EOF() {
+		tag, wireType, err := dec.ReadFieldHeader()
+		if err != nil {
+			t.Fatalf("ReadFieldHeader failed: %v", err)
+		}
+		switch tag {
+		case 1:
+			id, err = dec.ReadVarint()
+		case 2:
+			name, err = dec.ReadStringView()
+		default:
+			err = dec.SkipField(wireType)
+		}
+		if err != nil {
+			t.Fatalf("read tag %d failed: %v", tag, err)
+		}
+	}
+	if id != 42 || name != "stable" {
+		t.Fatalf("decoded old fields = (%d, %q), want (42, stable)", id, name)
 	}
 }

@@ -19,8 +19,9 @@ func TestCSharpGenerator(t *testing.T) {
 	}
 
 	s := &schema.Schema{
-		Version: "bymsg/v1",
-		Package: "Example.User",
+		Version:         "bymsg/v1",
+		ProtocolVersion: 7,
+		Package:         "Example.User",
 		Messages: map[string]*schema.Message{
 			"UserProfile": {
 				Description: &schema.Description{En: "User profile"},
@@ -55,6 +56,11 @@ func TestCSharpGenerator(t *testing.T) {
 	}
 	if !strings.Contains(content, "public partial class UserProfile") {
 		t.Error("Expected partial UserProfile class")
+	}
+	if !strings.Contains(content, "public const ulong Version = 7UL;") ||
+		!strings.Contains(content, "public static ulong GetByteMsg233ProtocolVersion() => Version;") ||
+		strings.Contains(content, "Fingerprint") {
+		t.Error("Expected only protocol version constant")
 	}
 	if strings.Contains(content, "public sealed class UserProfile") {
 		t.Error("C# generated classes must not be sealed")

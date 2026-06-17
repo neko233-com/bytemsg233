@@ -64,6 +64,7 @@ func (g *Generator) Generate(s *schema.Schema, options *codegen.GenerateOptions)
 
 	buf.WriteString(fmt.Sprintf("package %s\n\n", packageName))
 	g.generateImports(&buf, features)
+	g.generateProtocolConstants(&buf, s)
 
 	for _, name := range codegen.SortedEnumNames(s) {
 		g.generateEnum(&buf, name, s.Enums[name])
@@ -100,7 +101,6 @@ func (g *Generator) generateImports(buf *strings.Builder, features generatorFeat
 
 	imports := []string{
 		"\"bytes\"",
-		"\"encoding/binary\"",
 		"\"fmt\"",
 		"\"io\"",
 		"\"strconv\"",
@@ -124,6 +124,19 @@ func (g *Generator) generateImports(buf *strings.Builder, features generatorFeat
 		buf.WriteString("\n")
 	}
 	buf.WriteString(")\n\n")
+}
+
+func (g *Generator) generateProtocolConstants(buf *strings.Builder, s *schema.Schema) {
+	buf.WriteString("type IByteMsg233Api interface {\n")
+	buf.WriteString("\tSerializeByteMsg233() ([]byte, error)\n")
+	buf.WriteString("\tDeserializeFromByteMsg233(data []byte) error\n")
+	buf.WriteString("}\n\n")
+	buf.WriteString("const (\n")
+	buf.WriteString(fmt.Sprintf("\tByteMsgProtocolVersion uint64 = %d\n", s.ProtocolVersion))
+	buf.WriteString(")\n\n")
+	buf.WriteString("func GetByteMsg233ProtocolVersion() uint64 {\n")
+	buf.WriteString("\treturn ByteMsgProtocolVersion\n")
+	buf.WriteString("}\n\n")
 }
 
 func (g *Generator) generateEnum(buf *strings.Builder, name string, enum *schema.Enum) {
@@ -180,11 +193,11 @@ func (g *Generator) generateWireHelpers(buf *strings.Builder, features generator
 	buf.WriteString(")\n\n")
 
 	buf.WriteString("type byteMsgFastDecoder struct {\n")
-	buf.WriteString("\treader *bytes.Reader\n")
+	buf.WriteString("\treader *bytemsgBinary.SliceDecoder\n")
 	buf.WriteString("}\n\n")
 
 	buf.WriteString("func (decoder byteMsgFastDecoder) ReadVarint() (uint64, error) {\n")
-	buf.WriteString("\treturn binary.ReadUvarint(decoder.reader)\n")
+	buf.WriteString("\treturn decoder.reader.ReadVarint()\n")
 	buf.WriteString("}\n\n")
 
 	buf.WriteString("func (decoder byteMsgFastDecoder) ReadZigzag() (int64, error) {\n")
@@ -194,31 +207,19 @@ func (g *Generator) generateWireHelpers(buf *strings.Builder, features generator
 	buf.WriteString("}\n\n")
 
 	buf.WriteString("func (decoder byteMsgFastDecoder) ReadString() (string, error) {\n")
-	buf.WriteString("\tlength, err := decoder.ReadVarint()\n")
-	buf.WriteString("\tif err != nil {\n\t\treturn \"\", err\n\t}\n")
-	buf.WriteString("\tbuf := make([]byte, length)\n")
-	buf.WriteString("\tif _, err := io.ReadFull(decoder.reader, buf); err != nil {\n\t\treturn \"\", err\n\t}\n")
-	buf.WriteString("\treturn string(buf), nil\n")
+	buf.WriteString("\treturn decoder.reader.ReadStringView()\n")
 	buf.WriteString("}\n\n")
 
 	buf.WriteString("func (decoder byteMsgFastDecoder) ReadBytes() ([]byte, error) {\n")
-	buf.WriteString("\tlength, err := decoder.ReadVarint()\n")
-	buf.WriteString("\tif err != nil {\n\t\treturn nil, err\n\t}\n")
-	buf.WriteString("\tbuf := make([]byte, length)\n")
-	buf.WriteString("\t_, err = io.ReadFull(decoder.reader, buf)\n")
-	buf.WriteString("\treturn buf, err\n")
+	buf.WriteString("\treturn decoder.reader.ReadBytesView()\n")
 	buf.WriteString("}\n\n")
 
 	buf.WriteString("func (decoder byteMsgFastDecoder) ReadFixed32() (uint32, error) {\n")
-	buf.WriteString("\tvar buf [4]byte\n")
-	buf.WriteString("\tif _, err := io.ReadFull(decoder.reader, buf[:]); err != nil {\n\t\treturn 0, err\n\t}\n")
-	buf.WriteString("\treturn binary.LittleEndian.Uint32(buf[:]), nil\n")
+	buf.WriteString("\treturn decoder.reader.ReadFixed32()\n")
 	buf.WriteString("}\n\n")
 
 	buf.WriteString("func (decoder byteMsgFastDecoder) ReadFixed64() (uint64, error) {\n")
-	buf.WriteString("\tvar buf [8]byte\n")
-	buf.WriteString("\tif _, err := io.ReadFull(decoder.reader, buf[:]); err != nil {\n\t\treturn 0, err\n\t}\n")
-	buf.WriteString("\treturn binary.LittleEndian.Uint64(buf[:]), nil\n")
+	buf.WriteString("\treturn decoder.reader.ReadFixed64()\n")
 	buf.WriteString("}\n\n")
 
 	buf.WriteString("func (decoder byteMsgFastDecoder) ReadFieldHeader() (tag int, wireType int, err error) {\n")
@@ -241,13 +242,7 @@ func (g *Generator) generateWireHelpers(buf *strings.Builder, features generator
 	buf.WriteString("}\n\n")
 
 	buf.WriteString("func byteMsgSkipUnknownField(decoder byteMsgFastDecoder, wireType int) error {\n")
-	buf.WriteString("\tswitch wireType {\n")
-	buf.WriteString("\tcase byteMsgWireTypeVarint:\n\t\t_, err := decoder.ReadVarint()\n\t\treturn err\n")
-	buf.WriteString("\tcase byteMsgWireTypeFixed64:\n\t\t_, err := decoder.ReadFixed64()\n\t\treturn err\n")
-	buf.WriteString("\tcase byteMsgWireTypeLengthDelimited:\n\t\t_, err := decoder.ReadBytes()\n\t\treturn err\n")
-	buf.WriteString("\tcase byteMsgWireTypeFixed32:\n\t\t_, err := decoder.ReadFixed32()\n\t\treturn err\n")
-	buf.WriteString("\tdefault:\n\t\treturn fmt.Errorf(\"bytemsg233: unsupported wire type %d\", wireType)\n")
-	buf.WriteString("\t}\n")
+	buf.WriteString("\treturn decoder.reader.SkipField(wireType)\n")
 	buf.WriteString("}\n\n")
 }
 
@@ -315,7 +310,7 @@ func (g *Generator) generateMessage(buf *strings.Builder, s *schema.Schema, name
 			return err
 		}
 		goName := codegen.ToPascalCase(fieldName)
-		buf.WriteString(fmt.Sprintf("\tx.%s = %s\n", goName, g.zeroValueExpr(s, spec)))
+		buf.WriteString(g.resetStatement(s, spec, "x."+goName, "\t"))
 	}
 	buf.WriteString("}\n\n")
 
@@ -343,6 +338,10 @@ func (g *Generator) generateMessage(buf *strings.Builder, s *schema.Schema, name
 }
 
 func (g *Generator) generateMarshalMethods(buf *strings.Builder, s *schema.Schema, name string, msg *schema.Message) {
+	buf.WriteString(fmt.Sprintf("func (x *%s) SerializeByteMsg233() ([]byte, error) {\n", name))
+	buf.WriteString("\treturn x.MarshalByteMsg()\n")
+	buf.WriteString("}\n\n")
+
 	buf.WriteString(fmt.Sprintf("func (x *%s) MarshalByteMsg() ([]byte, error) {\n", name))
 	buf.WriteString("\tbuf := bytemsgBinary.GetBuffer()\n")
 	buf.WriteString("\tdefer bytemsgBinary.PutBuffer(buf)\n")
@@ -460,6 +459,10 @@ func (g *Generator) generateWriteValue(buf *strings.Builder, s *schema.Schema, e
 }
 
 func (g *Generator) generateUnmarshalMethods(buf *strings.Builder, s *schema.Schema, name string, msg *schema.Message) error {
+	buf.WriteString(fmt.Sprintf("func (x *%s) DeserializeFromByteMsg233(data []byte) error {\n", name))
+	buf.WriteString("\treturn x.UnmarshalByteMsg(data)\n")
+	buf.WriteString("}\n\n")
+
 	buf.WriteString(fmt.Sprintf("func (x *%s) UnmarshalByteMsg(data []byte) error {\n", name))
 	buf.WriteString(fmt.Sprintf("\tif x == nil {\n\t\treturn fmt.Errorf(\"bytemsg233: nil target %s\")\n\t}\n", name))
 	buf.WriteString("\tx.Reset()\n")
@@ -468,17 +471,16 @@ func (g *Generator) generateUnmarshalMethods(buf *strings.Builder, s *schema.Sch
 		buf.WriteString("}\n\n")
 		return nil
 	}
-	buf.WriteString("\tvar reader bytes.Reader\n")
-	buf.WriteString("\treader.Reset(data)\n")
-	buf.WriteString("\treturn x.unmarshalByteMsgFrom(&reader)\n")
+	buf.WriteString("\tdecoder := bytemsgBinary.NewSliceDecoder(data)\n")
+	buf.WriteString("\treturn x.unmarshalByteMsgFrom(decoder)\n")
 	buf.WriteString("}\n\n")
 
-	buf.WriteString(fmt.Sprintf("func (x *%s) unmarshalByteMsgFrom(reader *bytes.Reader) error {\n", name))
+	buf.WriteString(fmt.Sprintf("func (x *%s) unmarshalByteMsgFrom(reader *bytemsgBinary.SliceDecoder) error {\n", name))
 	buf.WriteString("\tdecoder := byteMsgFastDecoder{reader: reader}\n")
 	buf.WriteString("\tfor {\n")
 	buf.WriteString("\t\ttag, wireType, err := decoder.ReadFieldHeader()\n")
 	buf.WriteString("\t\tif err != nil {\n")
-	buf.WriteString("\t\t\tif err == io.EOF {\n\t\t\t\treturn nil\n\t\t\t}\n")
+	buf.WriteString("\t\t\tif err == io.EOF || err == io.ErrUnexpectedEOF {\n\t\t\t\treturn nil\n\t\t\t}\n")
 	buf.WriteString("\t\t\treturn err\n")
 	buf.WriteString("\t\t}\n")
 	buf.WriteString("\t\tswitch tag {\n")
@@ -504,16 +506,14 @@ func (g *Generator) generateReadValue(buf *strings.Builder, s *schema.Schema, de
 	switch spec.Kind {
 	case typeList:
 		bytesName := prefix + "Bytes"
-		readerName := prefix + "Reader"
 		decoderVar := prefix + "Decoder"
 		lenName := prefix + "Len"
 		itemName := prefix + "Item"
 		buf.WriteString(fmt.Sprintf("%sif wireType != byteMsgWireTypeLengthDelimited {\n%s\treturn byteMsgUnexpectedWireType(%q, wireType, byteMsgWireTypeLengthDelimited)\n%s}\n", indent, indent, targetExpr, indent))
 		buf.WriteString(fmt.Sprintf("%s%s, err := %s.ReadBytes()\n%sif err != nil {\n%s\treturn err\n%s}\n", indent, bytesName, decoderName, indent, indent, indent))
-		buf.WriteString(fmt.Sprintf("%svar %s bytes.Reader\n%s%s.Reset(%s)\n", indent, readerName, indent, readerName, bytesName))
-		buf.WriteString(fmt.Sprintf("%s%s := byteMsgFastDecoder{reader: &%s}\n", indent, decoderVar, readerName))
+		buf.WriteString(fmt.Sprintf("%s%s := byteMsgFastDecoder{reader: bytemsgBinary.NewSliceDecoder(%s)}\n", indent, decoderVar, bytesName))
 		buf.WriteString(fmt.Sprintf("%s%s, err := %s.ReadVarint()\n%sif err != nil {\n%s\treturn err\n%s}\n", indent, lenName, decoderVar, indent, indent, indent))
-		buf.WriteString(fmt.Sprintf("%s%s = make(%s, 0, int(%s))\n", indent, targetExpr, spec.Go, lenName))
+		buf.WriteString(fmt.Sprintf("%sif uint64(cap(%s)) < %s {\n%s\t%s = make(%s, 0, int(%s))\n%s} else {\n%s\t%s = %s[:0]\n%s}\n", indent, targetExpr, lenName, indent, targetExpr, spec.Go, lenName, indent, indent, targetExpr, targetExpr, indent))
 		buf.WriteString(fmt.Sprintf("%sfor i := uint64(0); i < %s; i++ {\n", indent, lenName))
 		buf.WriteString(fmt.Sprintf("%s\tvar %s %s\n", indent, itemName, spec.Value.Go))
 		g.generateReadNestedValue(buf, s, decoderVar, itemName, spec.Value, indent+"\t", prefix+"Item")
@@ -521,17 +521,15 @@ func (g *Generator) generateReadValue(buf *strings.Builder, s *schema.Schema, de
 		buf.WriteString(fmt.Sprintf("%s}\n", indent))
 	case typeMap:
 		bytesName := prefix + "Bytes"
-		readerName := prefix + "Reader"
 		decoderVar := prefix + "Decoder"
 		lenName := prefix + "Len"
 		keyName := prefix + "Key"
 		valueName := prefix + "Value"
 		buf.WriteString(fmt.Sprintf("%sif wireType != byteMsgWireTypeLengthDelimited {\n%s\treturn byteMsgUnexpectedWireType(%q, wireType, byteMsgWireTypeLengthDelimited)\n%s}\n", indent, indent, targetExpr, indent))
 		buf.WriteString(fmt.Sprintf("%s%s, err := %s.ReadBytes()\n%sif err != nil {\n%s\treturn err\n%s}\n", indent, bytesName, decoderName, indent, indent, indent))
-		buf.WriteString(fmt.Sprintf("%svar %s bytes.Reader\n%s%s.Reset(%s)\n", indent, readerName, indent, readerName, bytesName))
-		buf.WriteString(fmt.Sprintf("%s%s := byteMsgFastDecoder{reader: &%s}\n", indent, decoderVar, readerName))
+		buf.WriteString(fmt.Sprintf("%s%s := byteMsgFastDecoder{reader: bytemsgBinary.NewSliceDecoder(%s)}\n", indent, decoderVar, bytesName))
 		buf.WriteString(fmt.Sprintf("%s%s, err := %s.ReadVarint()\n%sif err != nil {\n%s\treturn err\n%s}\n", indent, lenName, decoderVar, indent, indent, indent))
-		buf.WriteString(fmt.Sprintf("%s%s = make(%s, int(%s))\n", indent, targetExpr, spec.Go, lenName))
+		buf.WriteString(fmt.Sprintf("%sif %s == nil {\n%s\t%s = make(%s, int(%s))\n%s} else {\n%s\tclear(%s)\n%s}\n", indent, targetExpr, indent, targetExpr, spec.Go, lenName, indent, indent, targetExpr, indent))
 		buf.WriteString(fmt.Sprintf("%sfor i := uint64(0); i < %s; i++ {\n", indent, lenName))
 		buf.WriteString(fmt.Sprintf("%s\tvar %s %s\n", indent, keyName, spec.Key.Go))
 		g.generateReadNestedValue(buf, s, decoderVar, keyName, spec.Key, indent+"\t", prefix+"Key")
@@ -541,11 +539,9 @@ func (g *Generator) generateReadValue(buf *strings.Builder, s *schema.Schema, de
 		buf.WriteString(fmt.Sprintf("%s}\n", indent))
 	case typeMessage:
 		bytesName := prefix + "Bytes"
-		readerName := prefix + "Reader"
 		buf.WriteString(fmt.Sprintf("%sif wireType != byteMsgWireTypeLengthDelimited {\n%s\treturn byteMsgUnexpectedWireType(%q, wireType, byteMsgWireTypeLengthDelimited)\n%s}\n", indent, indent, targetExpr, indent))
 		buf.WriteString(fmt.Sprintf("%s%s, err := %s.ReadBytes()\n%sif err != nil {\n%s\treturn err\n%s}\n", indent, bytesName, decoderName, indent, indent, indent))
-		buf.WriteString(fmt.Sprintf("%svar %s bytes.Reader\n%s%s.Reset(%s)\n", indent, readerName, indent, readerName, bytesName))
-		buf.WriteString(fmt.Sprintf("%sif err := %s.unmarshalByteMsgFrom(&%s); err != nil {\n%s\treturn err\n%s}\n", indent, targetExpr, readerName, indent, indent))
+		buf.WriteString(fmt.Sprintf("%sif err := %s.unmarshalByteMsgFrom(bytemsgBinary.NewSliceDecoder(%s)); err != nil {\n%s\treturn err\n%s}\n", indent, targetExpr, bytesName, indent, indent))
 	default:
 		buf.WriteString(fmt.Sprintf("%sif wireType != %s {\n%s\treturn byteMsgUnexpectedWireType(%q, wireType, %s)\n%s}\n", indent, g.wireTypeConst(spec), indent, targetExpr, g.wireTypeConst(spec), indent))
 		g.generateReadNestedValue(buf, s, decoderName, targetExpr, spec, indent, prefix)
@@ -560,10 +556,8 @@ func (g *Generator) generateReadNestedValue(buf *strings.Builder, s *schema.Sche
 		g.generateReadValue(buf, s, decoderName, targetExpr, spec, indent, prefix)
 	case typeMessage:
 		bytesName := prefix + "Bytes"
-		readerName := prefix + "Reader"
 		buf.WriteString(fmt.Sprintf("%s%s, err := %s.ReadBytes()\n%sif err != nil {\n%s\treturn err\n%s}\n", indent, bytesName, decoderName, indent, indent, indent))
-		buf.WriteString(fmt.Sprintf("%svar %s bytes.Reader\n%s%s.Reset(%s)\n", indent, readerName, indent, readerName, bytesName))
-		buf.WriteString(fmt.Sprintf("%sif err := %s.unmarshalByteMsgFrom(&%s); err != nil {\n%s\treturn err\n%s}\n", indent, targetExpr, readerName, indent, indent))
+		buf.WriteString(fmt.Sprintf("%sif err := %s.unmarshalByteMsgFrom(bytemsgBinary.NewSliceDecoder(%s)); err != nil {\n%s\treturn err\n%s}\n", indent, targetExpr, bytesName, indent, indent))
 	case typeEnum:
 		valueName := prefix + "Value"
 		buf.WriteString(fmt.Sprintf("%s%s, err := %s.ReadZigzag()\n%sif err != nil {\n%s\treturn err\n%s}\n", indent, valueName, decoderName, indent, indent, indent))
@@ -928,6 +922,23 @@ func (g *Generator) zeroValueExpr(s *schema.Schema, spec *typeSpec) string {
 	default:
 		return "nil"
 	}
+}
+
+func (g *Generator) resetStatement(s *schema.Schema, spec *typeSpec, targetExpr string, indent string) string {
+	switch spec.Kind {
+	case typeList:
+		return fmt.Sprintf("%s%s = %s[:0]\n", indent, targetExpr, targetExpr)
+	case typeMap:
+		return fmt.Sprintf("%sif %s != nil {\n%s\tclear(%s)\n%s}\n", indent, targetExpr, indent, targetExpr, indent)
+	case typeMessage:
+		return fmt.Sprintf("%s%s.Reset()\n", indent, targetExpr)
+	case typeEnum:
+		return fmt.Sprintf("%s%s = %s\n", indent, targetExpr, g.zeroValueExpr(s, spec))
+	}
+	if spec.Raw == "bytes" {
+		return fmt.Sprintf("%s%s = %s[:0]\n", indent, targetExpr, targetExpr)
+	}
+	return fmt.Sprintf("%s%s = %s\n", indent, targetExpr, g.zeroValueExpr(s, spec))
 }
 
 func unwrapGeneric(value string, name string) (string, bool) {

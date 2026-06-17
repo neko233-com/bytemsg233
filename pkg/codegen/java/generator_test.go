@@ -11,8 +11,9 @@ import (
 func TestJavaGenerator(t *testing.T) {
 	gen := New()
 	s := &schema.Schema{
-		Version: "bymsg/v1",
-		Package: "com.example",
+		Version:         "bymsg/v1",
+		ProtocolVersion: 7,
+		Package:         "com.example",
 		Messages: map[string]*schema.Message{
 			"User": {
 				Description: &schema.Description{En: "User profile"},
@@ -34,18 +35,21 @@ func TestJavaGenerator(t *testing.T) {
 		t.Fatalf("Generate failed: %v", err)
 	}
 
-	if len(files) != 2 {
-		t.Fatalf("Expected 2 files, got %d", len(files))
+	if len(files) != 3 {
+		t.Fatalf("Expected 3 files, got %d", len(files))
 	}
 
 	var userContent string
 	var enumContent string
+	var protocolContent string
 	for _, file := range files {
 		switch file.Path {
 		case "User.java":
 			userContent = string(file.Content)
 		case "Status.java":
 			enumContent = string(file.Content)
+		case "ByteMsgProtocolInfo.java":
+			protocolContent = string(file.Content)
 		}
 	}
 
@@ -54,6 +58,11 @@ func TestJavaGenerator(t *testing.T) {
 	}
 	if !strings.Contains(userContent, "public class User") {
 		t.Error("Expected class")
+	}
+	if !strings.Contains(protocolContent, "public static final long VERSION = 7L;") ||
+		!strings.Contains(protocolContent, "public static long getByteMsg233ProtocolVersion() { return VERSION; }") ||
+		strings.Contains(protocolContent, "FINGERPRINT") {
+		t.Error("Expected protocol info file")
 	}
 	if !strings.Contains(userContent, "/** User profile */") {
 		t.Error("Expected class comment")
@@ -117,7 +126,13 @@ func TestJavaNestedTypes(t *testing.T) {
 		t.Fatalf("Generate failed: %v", err)
 	}
 
-	content := string(files[0].Content)
+	var content string
+	for _, file := range files {
+		if file.Path == "Test.java" {
+			content = string(file.Content)
+			break
+		}
+	}
 	if !strings.Contains(content, "List<String>") {
 		t.Error("Expected List<String>")
 	}

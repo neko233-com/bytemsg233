@@ -22,6 +22,13 @@ const (
 	BlockColumnList   BlockKind = 6
 )
 
+const (
+	WireTypeVarint          = 0
+	WireTypeFixed64         = 1
+	WireTypeLengthDelimited = 2
+	WireTypeFixed32         = 5
+)
+
 var bufferPool = make([]*bytes.Buffer, 0, ByteMsgBufferPoolLimit)
 
 // GetBuffer gets a buffer from the pool
@@ -280,6 +287,16 @@ func AppendBytes(dst []byte, value []byte) []byte {
 // AppendFieldHeader appends a field header (tag + wire type) to dst.
 func AppendFieldHeader(dst []byte, tag int, wireType int) []byte {
 	return AppendVarint(dst, uint64(tag<<3|wireType))
+}
+
+// VarintLen returns the encoded byte length of a uint64 varint.
+func VarintLen(value uint64) int {
+	n := 1
+	for value >= 0x80 {
+		n++
+		value >>= 7
+	}
+	return n
 }
 
 // AppendBlockHeader appends the tag, block kind, and payload length for an

@@ -50,17 +50,40 @@ import java.util.*;
 public final class ByteMsg233JavaSmoke {
     public static void main(String[] args) {
         ByteMsgWriter writer = new ByteMsgWriter();
+        writer.writeFieldHeader(99, ByteMsgWireType.VARINT);
+        writer.writeVarint(9001);
+        writer.writeFieldHeader(100, ByteMsgWireType.FIXED32);
+        writer.writeFixed32(0x12345678);
+        writer.writeFieldHeader(101, ByteMsgWireType.FIXED64);
+        writer.writeFixed64(0x0102030405060708L);
+        writer.writeFieldHeader(1, ByteMsgWireType.BYTES);
+        writer.writeString("Hero");
         writer.writePackedVarints(Arrays.asList(1L, 2L, 127L, 128L));
         writer.writeDeltaVarints(Arrays.asList(100L, 101L, 109L));
         writer.writeBoolBitset(Arrays.asList(true, false, true, true, false, true, false, false, true));
         writer.writeStringList(Arrays.asList("rank", "battle"));
 
         ByteMsgReader reader = new ByteMsgReader(writer.toByteArray());
+        String name = "";
+        while (name.isEmpty()) {
+            ByteMsgFieldHeader header = reader.readFieldHeader();
+            if (header.getTag() == 1) {
+                name = reader.readString();
+            } else {
+                reader.skipField(header.getWireType());
+            }
+        }
+        if (!"Hero".equals(name)) throw new RuntimeException("unknown field skip failed");
         if (!reader.readPackedVarints(null).equals(Arrays.asList(1L, 2L, 127L, 128L))) throw new RuntimeException("packed failed");
         if (!reader.readDeltaVarints(null).equals(Arrays.asList(100L, 101L, 109L))) throw new RuntimeException("delta failed");
         List<Boolean> flags = reader.readBoolBitset(null);
         if (flags.size() != 9 || !flags.get(0) || flags.get(1) || !flags.get(8)) throw new RuntimeException("bitset failed");
         if (!reader.readStringList(null).equals(Arrays.asList("rank", "battle"))) throw new RuntimeException("strings failed");
+
+        ByteMsgProtocolHello local = new ByteMsgProtocolHello(7L, 6L);
+        ByteMsgProtocolHello remote = ByteMsgProtocol.readHello(ByteMsgProtocol.writeHello(local));
+        if (remote.getVersion() != 7L || remote.getMinCompatible() != 6L) throw new RuntimeException("hello failed");
+        ByteMsgProtocol.checkCompatible(local, remote);
     }
 }
 "@ | Set-Content -Path $smokeFile -Encoding ASCII
