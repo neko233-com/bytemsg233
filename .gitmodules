@@ -19,3 +19,21 @@
 [submodule "libs/java"]
 	path = libs/java
 	url = https://github.com/neko233-com/bytemsg233-lib-java.git
+[submodule "libs/cpp"]
+	path = libs/cpp
+	url = https://github.com/neko233-com/bytemsg233-lib-cpp.git
+[submodule "libs/kotlin"]
+	path = libs/kotlin
+	url = https://github.com/neko233-com/bytemsg233-lib-kotlin.git
+[submodule "libs/c"]
+	path = libs/c
+	url = https://github.com/neko233-com/bytemsg233-lib-c.git
+[submodule "libs/dart"]
+	path = libs/dart
+	url = https://github.com/neko233-com/bytemsg233-lib-dart.git
+[submodule "libs/swift"]
+	path = libs/swift
+	url = https://github.com/neko233-com/bytemsg233-lib-swift.git
+[submodule "libs/lua"]
+	path = libs/lua
+	url = https://github.com/neko233-com/bytemsg233-lib-lua.git
