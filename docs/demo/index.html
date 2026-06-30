@@ -963,7 +963,7 @@
         </nav>
       </div>
       <div class="rail-foot" data-i18n="rail.foot">
-        JSON replaces .proto. YAML remains supported when a team wants it.
+        JSON is the main authoring path. Proto import/export is available for interchange.
       </div>
     </aside>
 
@@ -984,7 +984,7 @@
           <div class="poster reveal">
             <div>
               <h2><span data-i18n="hero.title.a">Install first.</span> <span data-i18n="hero.title.b">Ship schema next.</span></h2>
-              <p class="poster-copy" data-i18n="hero.copy">ByteMsg233 turns one JSON schema into native-feeling Go, C#, Java, TypeScript, Rust, and Python models with single-threaded pools, enum helpers, localized comments, compact binary payloads, and 0-GC hot paths.</p>
+              <p class="poster-copy" data-i18n="hero.copy">ByteMsg233 turns one schema into native-feeling Go, C#, Java, TypeScript, Rust, and Python models with single-threaded pools, enum helpers, localized comments, compact binary payloads, and 0-GC hot paths.</p>
             </div>
 
             <div class="install-strip">
@@ -1054,7 +1054,7 @@
               <div class="rule"><strong data-i18n="rule.message.title">message key</strong><span data-i18n="rule.message.copy">Top-level keys such as `Hero` and `InventoryItem` map to native classes or structs.</span></div>
               <div class="rule"><strong data-i18n="rule.fields.title">fields</strong><span data-i18n="rule.fields.copy">Every field declares `type`, `tag`, and optional localized descriptions.</span></div>
               <div class="rule"><strong data-i18n="rule.enums.title">enums</strong><span data-i18n="rule.enums.copy">Enum values generate native enum helpers instead of forcing raw integers.</span></div>
-              <div class="rule"><strong data-i18n="rule.exports.title">exports</strong><span data-i18n="rule.exports.copy">Generate `.md` for people and `.bmsg` for legacy/future DSL tooling.</span></div>
+              <div class="rule"><strong data-i18n="rule.exports.title">exports</strong><span data-i18n="rule.exports.copy">Generate `.md` for people, `.proto` for interchange, and `.bmsg` for legacy/future DSL tooling.</span></div>
             </div>
           </div>
 
@@ -1068,9 +1068,9 @@ bytemsg233 compile user.bmsg.json \
   -l go,csharp,typescript,rust,java \
   -o ./gen
 
-<span class="cm"># export docs and extension-friendly .bmsg</span>
+<span class="cm"># export docs and metadata interchange files</span>
 bytemsg233 export user.bmsg.json \
-  -f md,bmsg \
+  -f md,bmsg,proto \
   -o ./protocol</code></pre>
           </div>
         </div>
@@ -1436,12 +1436,12 @@ heroPool.return(hero)</code></pre></div>
         "nav.performance": "Performance",
         "nav.lab": "Binary Lab",
         "nav.docs": "Docs Rules",
-        "rail.foot": "JSON replaces .proto. YAML remains supported when a team wants it.",
+        "rail.foot": "JSON is the main authoring path. Proto import/export is available for interchange.",
         "topline.label": "ByteMsg233 / schema compiler / binary runtime",
         "topline.github": "GitHub repository",
         "hero.title.a": "Install first.",
         "hero.title.b": "Ship schema next.",
-        "hero.copy": "ByteMsg233 turns one JSON schema into native-feeling Go, C#, Java, TypeScript, Rust, C++, C, Kotlin, Swift, Dart, Lua, and Python models with single-threaded pools, enum helpers, localized comments, protocol-version helpers, compact binary payloads, and 0-GC hot paths.",
+        "hero.copy": "ByteMsg233 turns one schema into native-feeling Go, C#, Java, TypeScript, Rust, C++, C, Kotlin, Swift, Dart, Lua, and Python models with single-threaded pools, enum helpers, localized comments, protocol-version helpers, compact binary payloads, and 0-GC hot paths.",
         "button.copy": "Copy",
         "button.copied": "Copied",
         "install.unix": "Install",
@@ -1462,7 +1462,7 @@ heroPool.return(hero)</code></pre></div>
         "rule.enums.title": "enums",
         "rule.enums.copy": "Enum values generate native enum helpers instead of forcing raw integers.",
         "rule.exports.title": "exports",
-        "rule.exports.copy": "Generate `.md` for people and `.bmsg` for legacy/future DSL tooling.",
+        "rule.exports.copy": "Generate `.md` for people, `.proto` for interchange, and `.bmsg` for legacy/future DSL tooling.",
         "languages.title": "Generated code should feel native, not translated.",
         "languages.copy": "Each target gets its own pool pattern, enum helpers, comments, and naming style. The schema is shared; the developer experience is language-specific.",
         "lang.go": "Struct tags, exported fields, and single-threaded slice-stack pool helpers.",
@@ -1537,12 +1537,12 @@ heroPool.return(hero)</code></pre></div>
         "nav.performance": "性能",
         "nav.lab": "二进制实验",
         "nav.docs": "文档规则",
-        "rail.foot": "JSON 替代 .proto。团队需要时仍然支持 YAML。",
+        "rail.foot": "JSON 是主编写路径；需要互通时可导入/导出 Proto。",
         "topline.label": "ByteMsg233 / schema 编译器 / 二进制运行时",
         "topline.github": "GitHub 仓库",
         "hero.title.a": "先安装。",
         "hero.title.b": "再交付 schema。",
-        "hero.copy": "ByteMsg233 把一份 JSON schema 生成 Go、C#、Java、TypeScript、Rust、C++、C、Kotlin、Swift、Dart、Lua、Python 的原生风格模型，内置单线程对象池、enum helper、本地化注释、协议版本工具、紧凑二进制载荷和 0-GC 热路径。",
+        "hero.copy": "ByteMsg233 把一份 schema 生成 Go、C#、Java、TypeScript、Rust、C++、C、Kotlin、Swift、Dart、Lua、Python 的原生风格模型，内置单线程对象池、enum helper、本地化注释、协议版本工具、紧凑二进制载荷和 0-GC 热路径。",
         "button.copy": "复制",
         "button.copied": "已复制",
         "install.unix": "安装",
@@ -1563,7 +1563,7 @@ heroPool.return(hero)</code></pre></div>
         "rule.enums.title": "枚举",
         "rule.enums.copy": "Enum 会生成目标语言原生 helper，不强迫用户处理裸整数。",
         "rule.exports.title": "导出",
-        "rule.exports.copy": "生成 `.md` 给人看，生成 `.bmsg` 给 legacy 或未来 DSL 工具。",
+        "rule.exports.copy": "生成 `.md` 给人看，生成 `.proto` 做互通，生成 `.bmsg` 给 legacy 或未来 DSL 工具。",
         "languages.title": "生成代码应该像原生代码，不像翻译稿。",
         "languages.copy": "每个目标语言都有自己的池化模式、enum helper、注释和命名风格。schema 共享，开发体验按语言定制。",
         "lang.go": "Struct tag、导出字段、单线程 slice-stack pool helper。",

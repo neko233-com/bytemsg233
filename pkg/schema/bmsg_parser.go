@@ -95,6 +95,12 @@ func ParseBmsg(data []byte) (*Schema, error) {
 		}
 	}
 
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("scan bmsg: %w", err)
+	}
+	if err := validate(s); err != nil {
+		return nil, err
+	}
 	return s, nil
 }
 

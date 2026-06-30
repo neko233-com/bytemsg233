@@ -85,6 +85,7 @@ func TestParseFileNativeJSON(t *testing.T) {
 	path := dir + "/game.bmsg.json"
 	data := []byte(`{
   "schema": "bymsg/v1",
+  "protocolVersion": 7,
   "package": "com.example.game",
   "enums": {
     "HeroState": {
@@ -123,8 +124,29 @@ func TestParseFileNativeJSON(t *testing.T) {
 	if s.Messages["Hero"].Fields["state"].Type != "HeroState" {
 		t.Fatalf("Expected Hero.state to use HeroState")
 	}
+	if s.ProtocolVersion != 7 {
+		t.Fatalf("Expected protocolVersion 7, got %d", s.ProtocolVersion)
+	}
 	if len(s.Enums) != 1 {
 		t.Fatalf("Expected 1 enum, got %d", len(s.Enums))
+	}
+}
+
+func TestImportExplicitFormat(t *testing.T) {
+	data := []byte(`schema: bymsg/v1
+package: explicit
+
+message Ping {
+    uint64 id = 1
+}
+`)
+
+	s, err := Import("json", data, &ImportOptions{Format: "bmsg"})
+	if err != nil {
+		t.Fatalf("Import explicit bmsg format failed: %v", err)
+	}
+	if s.Package != "explicit" || s.Messages["Ping"].Fields["id"].Type != "uint64" {
+		t.Fatalf("explicit import format parsed wrong schema: %#v", s)
 	}
 }
 

@@ -16,7 +16,7 @@ import (
 	"github.com/neko233-com/bytemsg233/pkg/schema"
 )
 
-// Compiler compiles JSON/YAML schema files, with legacy .bmsg compatibility.
+// Compiler compiles schema files supported by the schema import registry.
 type Compiler struct{}
 
 // New creates a new compiler
