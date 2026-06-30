@@ -28,7 +28,7 @@ func main() {
 
 	var compileCmd = &cobra.Command{
 		Use:   "compile [file]",
-		Short: "Compile a JSON schema to target languages",
+		Short: "Compile a schema to target languages",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			languages, _ := cmd.Flags().GetStringSlice("lang")
@@ -105,7 +105,7 @@ func main() {
 				baseName = strings.TrimSuffix(baseName, ".bmsg")
 			}
 
-			s, err := schema.ParseFile(args[0])
+			s, err := schema.ImportFile(args[0], nil)
 			if err != nil {
 				return err
 			}
@@ -114,30 +114,23 @@ func main() {
 			}
 
 			for _, format := range formats {
-				switch strings.ToLower(format) {
-				case "md", "markdown":
-					path := filepath.Join(outputDir, baseName+".md")
-					if err := os.WriteFile(path, exporter.Markdown(s), 0644); err != nil {
-						return err
-					}
-				case "html":
-					path := filepath.Join(outputDir, baseName+".html")
-					if err := os.WriteFile(path, exporter.HTML(s), 0644); err != nil {
-						return err
-					}
-				case "bmsg":
-					path := filepath.Join(outputDir, baseName+".bmsg")
-					if err := os.WriteFile(path, exporter.Bmsg(s), 0644); err != nil {
-						return err
-					}
-				default:
-					return fmt.Errorf("unsupported export format %q", format)
+				content, err := exporter.Export(format, s, &exporter.ExportOptions{Format: format, Name: baseName})
+				if err != nil {
+					return err
+				}
+				ext, err := exporter.Extension(format)
+				if err != nil {
+					return err
+				}
+				path := filepath.Join(outputDir, baseName+ext)
+				if err := os.WriteFile(path, content, 0644); err != nil {
+					return err
 				}
 			}
 			return nil
 		},
 	}
-	exportCmd.Flags().StringSliceP("format", "f", []string{"md", "html", "bmsg"}, "Export formats (md, html, bmsg)")
+	exportCmd.Flags().StringSliceP("format", "f", []string{"md", "html", "bmsg"}, "Export formats (md, html, bmsg, proto)")
 	exportCmd.Flags().StringP("output", "o", ".", "Output directory")
 	exportCmd.Flags().String("name", "", "Output base name")
 

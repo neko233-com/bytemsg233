@@ -5,9 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"os"
-	"path/filepath"
-	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -17,40 +14,7 @@ import (
 // JSON is the default DSL. YAML remains supported, and legacy .bmsg syntax is
 // accepted as a compatibility/export target for future tooling.
 func ParseFile(path string) (*Schema, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("read file: %w", err)
-	}
-
-	ext := strings.ToLower(filepath.Ext(path))
-	switch ext {
-	case ".bmsg":
-		s, err := ParseJSON(data)
-		if err == nil {
-			return s, nil
-		}
-		s, err = ParseYAML(data)
-		if err == nil {
-			return s, nil
-		}
-		return ParseBmsg(data)
-	case ".yaml", ".yml":
-		return ParseYAML(data)
-	case ".json":
-		return ParseJSON(data)
-	case ".toml":
-		return ParseTOML(data)
-	default:
-		s, err := ParseJSON(data)
-		if err == nil {
-			return s, nil
-		}
-		s, err = ParseYAML(data)
-		if err == nil {
-			return s, nil
-		}
-		return ParseBmsg(data)
-	}
+	return ImportFile(path, nil)
 }
 
 // ParseYAML parses YAML content
@@ -104,6 +68,9 @@ func parseNativeJSON(data []byte) (*Schema, error) {
 	}
 	if raw, ok := root["package"]; ok {
 		_ = json.Unmarshal(raw, &s.Package)
+	}
+	if raw, ok := root["protocolVersion"]; ok {
+		_ = json.Unmarshal(raw, &s.ProtocolVersion)
 	}
 	if raw, ok := root["enums"]; ok {
 		enums, err := parseNativeJSONEnums(raw)
@@ -404,7 +371,7 @@ func assignMissingTags(msg *Message, orderedKeys []string) {
 
 func isReservedNativeJSONKey(key string) bool {
 	switch key {
-	case "schema", "$schema", "package", "namespace", "messages", "enums":
+	case "schema", "$schema", "package", "namespace", "protocolVersion", "messages", "enums":
 		return true
 	default:
 		return false

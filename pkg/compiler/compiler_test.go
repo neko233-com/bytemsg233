@@ -73,6 +73,48 @@ messages:
 	}
 }
 
+func TestCompilerProtoToGo(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	schemaContent := `syntax = "proto3";
+package protocol;
+
+// ByteMsg233 schema: bymsg/v1
+// ByteMsg233 protocolVersion: 3
+
+// ByteMsg233 packetId: 1001
+message User {
+    uint64 id = 1;
+    string name = 2;
+    repeated string tags = 3;
+}
+`
+	schemaPath := filepath.Join(tmpDir, "user.proto")
+	if err := os.WriteFile(schemaPath, []byte(schemaContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	comp := New()
+	err := comp.Compile(&CompileOptions{
+		InputFile: schemaPath,
+		OutputDir: tmpDir,
+		Languages: []string{"go"},
+	})
+	if err != nil {
+		t.Fatalf("Compile proto failed: %v", err)
+	}
+
+	outputPath := filepath.Join(tmpDir, "ByteMsg233_Export.go")
+	data, err := os.ReadFile(outputPath)
+	if err != nil {
+		t.Fatalf("Expected ByteMsg233_Export.go to be created: %v", err)
+	}
+	content := string(data)
+	if !contains(content, "package protocol") || !contains(content, "ByteMsgProtocolVersion uint64 = 3") || !contains(content, "Tags []string") {
+		t.Fatalf("generated Go output missing proto-derived data:\n%s", content)
+	}
+}
+
 func TestCompilerMultipleLanguages(t *testing.T) {
 	tmpDir := t.TempDir()
 
