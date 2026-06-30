@@ -1256,6 +1256,7 @@ heroPool.return(hero)</code></pre></div>
         <div class="section-head">
           <h2 data-i18n="perf.title">Small payloads, strong large-message behavior.</h2>
           <p data-i18n="perf.copy">These snapshots include small packets, a normal RPC envelope, 10x battle input, 100-row repeated data, and game-style payloads. Tiny packets matter, but real projects also need battle frames, leaderboards, and login state pushes.</p>
+          <p class="percent-summary" data-i18n="perf.percent.summary">ByteMsg233 payload size is 49%~100% of Protobuf, 12%~49% of JSON, and 14%~57% of MessagePack. Smaller is better.</p>
         </div>
 
         <div class="bench-wrap">
@@ -1486,6 +1487,7 @@ heroPool.return(hero)</code></pre></div>
         "tab.swift.copy": "Swift uses extension methods for custom behavior and explicit pool objects for reusable messages.",
         "perf.title": "Small payloads, strong large-message behavior.",
         "perf.copy": "These snapshots include small packets, a normal RPC envelope, 10x battle input, 100-row repeated data, and game-style payloads. Tiny packets matter, but real projects also need battle frames, leaderboards, and login state pushes.",
+        "perf.percent.summary": "ByteMsg233 payload size is 49%~100% of Protobuf, 12%~49% of JSON, and 14%~57% of MessagePack. Smaller is better.",
         "perf.payload": "Payload size",
         "perf.lower": "lower is better",
         "perf.scenario": "Scenario",
@@ -1587,6 +1589,7 @@ heroPool.return(hero)</code></pre></div>
         "tab.swift.copy": "Swift 使用 extension method 扩展业务逻辑，用显式 pool 对象复用消息。",
         "perf.title": "小载荷也强，大消息更能体现优势。",
         "perf.copy": "这些快照覆盖小包、普通 RPC 包络、10x 战斗输入、100 行重复数据和游戏业务包。小包要看，但真实项目还会遇到战斗帧、排行榜和登录全量下发。",
+        "perf.percent.summary": "ByteMsg233 的包体大小是 Protobuf 的 49%~100%，JSON 的 12%~49%，MessagePack 的 14%~57%。越小越好。",
         "perf.payload": "载荷大小",
         "perf.lower": "越低越好",
         "perf.scenario": "场景",

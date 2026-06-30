@@ -163,6 +163,8 @@ Markdown is for people. HTML demo pages are standalone. Neither should depend on
 
 Package registries are convenient until they block a release. Every priority runtime is kept as a Git submodule under `libs/`, and `install-lib` copies the source into a target project.
 
+The official runtime libraries are shipped as `bytemsg233-lib-{language}` style packages or folders, and generated projects depend on them for the highest-performance language-native runtime.
+
 ```bash
 git submodule update --init --recursive
 bytemsg233 install-lib csharp --to ../MyUnityProject/Assets/Plugins/ByteMsg233
@@ -173,6 +175,8 @@ The copy command intentionally skips `.git`, `node_modules`, `build`, `dist`, an
 ## Performance Snapshot
 
 Read this table as a practical game/client baseline, not as a tiny-object trick. It includes small packets, repeated DTOs, battle input, and 100-row ranking data. Bigger repeated structures are where binary protocols show their real shape.
+
+Percent view for quick reading: in this snapshot, ByteMsg233 payload size is 49%~100% of Protobuf, 12%~49% of JSON, and 14%~57% of MessagePack. In plain words, repeated game data gets smaller as the structure gets more repetitive.
 
 | Scenario | ByteMsg233 | Protobuf | JSON payload | MessagePack |
 |---|---:|---:|---:|---:|

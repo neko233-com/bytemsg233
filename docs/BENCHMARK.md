@@ -12,6 +12,8 @@ ByteMsg233 is optimized for schema-driven game and client traffic: small field h
 
 The headline is straightforward: the Go fast path now beats the Protobuf wire helper baselines in every Protobuf comparison in this suite, while keeping allocation pressure low and repeated client payloads compact.
 
+Quick percentage view: ByteMsg233 payload size in this snapshot is 49%~100% of Protobuf, 12%~49% of JSON, and 14%~57% of MessagePack. In plain terms, more repeated data means more savings.
+
 ## How To Read The Tables
 
 Lower is better for size, `ns/op`, `B/op`, and `allocs/op`.
@@ -187,6 +189,8 @@ Allocations are where game clients feel pain: a small per-packet allocation can 
 | TaskDto list, 100 rows | **0, 0** | 7744, 101 | 1833, 105 | 1674, 102 |
 
 Generated object pools are separate from these raw codec benchmark numbers. They reduce application-level churn after code generation, especially in Unity-style gameplay code and client update loops. Runtime pools are single-threaded and lock-free by policy so hot-path memory reuse stays predictable.
+
+Official runtime libraries follow the `bytemsg233-lib-{language}` naming style and are the language-native runtime dependency for generated projects.
 
 For hot-path encode code, prefer caller-owned buffers. `AppendEncoder` is the zero-GC path for preallocated byte slices:
 
