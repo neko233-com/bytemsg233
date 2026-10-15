@@ -18,3 +18,7 @@ ByteMsg233 提供两个独立 public Git 子仓库：
 - `bytemsg233 export hero.bmsg.json -f md,html,bmsg,proto -o generated/docs`：导出文档和协议。
 
 JSON 格式化保留字段顺序和大整数原文；YAML 保留注释。生成前会保存当前文件，保存失败则停止。未受信任项目禁止执行 CLI。普通 JSON/YAML 文件保持原类型；`.proto` 提供校验 / 导出入口，语法高亮和格式化交给 Proto 插件。
+
+## 发布状态（2026-10-15）
+
+两个插件的 1.1.0 ZIP / VSIX 已在各仓库 GitHub Releases 发布；CLI v1.1.3 已发布六个平台架构包。JetBrains Marketplace（plugin 35154，update 1194594）已提交，正在审核；VS Code Marketplace 尚未上架，请使用 VSIX。
