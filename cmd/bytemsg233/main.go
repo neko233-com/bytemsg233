@@ -190,6 +190,7 @@ func main() {
 	updateCmd.Flags().Bool("dry-run", false, "Print update URLs without downloading")
 
 	rootCmd.AddCommand(compileCmd, versionCmd, initCmd, exportCmd, installLibCmd, updateCmd)
+	rootCmd.AddCommand(editorCommands()...)
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)

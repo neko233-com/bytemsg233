@@ -36,8 +36,16 @@ func validate(s *Schema) error {
 	}
 
 	for name, msg := range s.Messages {
+		if msg == nil {
+			return fmt.Errorf("message %s must be an object", name)
+		}
 		if msg.Fields == nil {
 			msg.Fields = make(map[string]*Field)
+		}
+		for fieldName, field := range msg.Fields {
+			if field == nil {
+				return fmt.Errorf("message %s, field %s must be a type or object", name, fieldName)
+			}
 		}
 		assignMissingTagsStable(msg)
 		for fieldName, field := range msg.Fields {

@@ -246,8 +246,8 @@ Full notes: [docs/BENCHMARK.md](docs/BENCHMARK.md). Game packet design: [docs/GA
 | `libs/objc` | https://github.com/neko233-com/bytemsg233-lib-objc |
 | `libs/python` | https://github.com/neko233-com/bytemsg233-lib-python |
 | `libs/verse` | https://github.com/neko233-com/bytemsg233-lib-verse |
-| `editors/vscode` | https://github.com/neko233-com/bytemsg233-plugin-vscode |
-| `editors/jetbrains` | https://github.com/neko233-com/bytemsg233-plugin-jetbrains |
+| `editors/vscode` | https://github.com/neko233-com/plugin-vscode-bytemsg233 |
+| `editors/jetbrains` | https://github.com/neko233-com/plugin-jetbrains-bytemsg233 |
 
 ## Develop
 
@@ -495,8 +495,8 @@ powershell -ExecutionPolicy Bypass -File scripts/test-java.ps1
 | `libs/objc` | https://github.com/neko233-com/bytemsg233-lib-objc |
 | `libs/python` | https://github.com/neko233-com/bytemsg233-lib-python |
 | `libs/verse` | https://github.com/neko233-com/bytemsg233-lib-verse |
-| `editors/vscode` | https://github.com/neko233-com/bytemsg233-plugin-vscode |
-| `editors/jetbrains` | https://github.com/neko233-com/bytemsg233-plugin-jetbrains |
+| `editors/vscode` | https://github.com/neko233-com/plugin-vscode-bytemsg233 |
+| `editors/jetbrains` | https://github.com/neko233-com/plugin-jetbrains-bytemsg233 |
 
 ## 开发
 
@@ -505,3 +505,12 @@ go test ./...
 ```
 
 MIT 许可证。
+
+## Editor Plugins / 编辑器插件
+
+Two independent public repositories provide highlighting, completion, native formatting, schema validation, current-file navigation, language generation and documentation / Proto export:
+
+- [JetBrains plugin](https://github.com/neko233-com/plugin-jetbrains-bytemsg233) — `editors/jetbrains`, install ZIP from GitHub Releases.
+- [VS Code plugin](https://github.com/neko233-com/plugin-vscode-bytemsg233) — `editors/vscode`, install VSIX from GitHub Releases.
+
+Both support `.bmsg.json`, `.bmsg.yaml`, `.bmsg.yml` and legacy `.bmsg`. Install CLI **v1.1.3+** for `format`, `check`, and `languages`. Run `bytemsg233 languages` to list implemented generators: Go, C#, TypeScript, Java, Rust and Python in v1.1.3. JSON formatting preserves field order and integer values. [使用文档](docs/EDITOR_PLUGINS.md).

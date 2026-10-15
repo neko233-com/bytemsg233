@@ -124,6 +124,9 @@ func parseNativeJSONMessage(raw json.RawMessage) (*Message, error) {
 	if err := json.Unmarshal(raw, &obj); err != nil {
 		return nil, err
 	}
+	if obj == nil {
+		return nil, fmt.Errorf("message must be an object")
+	}
 
 	msg := &Message{Fields: make(map[string]*Field)}
 	if rawDesc, ok := obj["description"]; ok {
@@ -338,6 +341,9 @@ func assignMissingTags(msg *Message, orderedKeys []string) {
 
 	used := make(map[int]bool)
 	for _, field := range msg.Fields {
+		if field == nil {
+			continue // validate reports null fields after tag assignment.
+		}
 		if field.Tag > 0 {
 			used[field.Tag] = true
 		}

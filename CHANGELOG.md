@@ -4,6 +4,18 @@ All notable changes to ByteMsg233 will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.1.3] - 2026-10-15
+
+### Added
+
+- Public JetBrains and VS Code plugin repositories with highlighting, completion, native formatting, validation, navigation and multi-language export.
+- Editor CLI commands `format`, `check` and `languages`; stdin support for unsaved buffers.
+- Formatting preserves JSON key order and large integer lexemes, YAML comments and legacy schema meaning.
+
+### Fixed
+
+- Reject null message / field definitions during schema validation instead of panicking.
+
 ## [1.1.1] - 2026-07-07
 
 ### Added
