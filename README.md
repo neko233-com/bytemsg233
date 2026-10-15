@@ -511,6 +511,6 @@ MIT 许可证。
 Two independent public repositories provide highlighting, completion, native formatting, schema validation, current-file navigation, language generation and documentation / Proto export:
 
 - [JetBrains plugin](https://github.com/neko233-com/plugin-jetbrains-bytemsg233) — `editors/jetbrains`, install ZIP from GitHub Releases.
-- [VS Code plugin](https://github.com/neko233-com/plugin-vscode-bytemsg233) — `editors/vscode`, install VSIX from GitHub Releases.
+- [VS Code plugin](https://github.com/neko233-com/plugin-vscode-bytemsg233) — `editors/vscode`, available on [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=neko233-com.bytemsg233): `code --install-extension neko233-com.bytemsg233`. Offline VSIX is available from GitHub Releases.
 
 Both support `.bmsg.json`, `.bmsg.yaml`, `.bmsg.yml` and legacy `.bmsg`. Install CLI **v1.1.3+** for `format`, `check`, and `languages`. Run `bytemsg233 languages` to list implemented generators: Go, C#, TypeScript, Java, Rust and Python in v1.1.3. JSON formatting preserves field order and integer values. [使用文档](docs/EDITOR_PLUGINS.md).

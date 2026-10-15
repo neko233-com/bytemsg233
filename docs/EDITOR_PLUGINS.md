@@ -21,4 +21,10 @@ JSON 格式化保留字段顺序和大整数原文；YAML 保留注释。生成�
 
 ## 发布状态（2026-10-15）
 
-两个插件的 1.1.0 ZIP / VSIX 已在各仓库 GitHub Releases 发布；CLI v1.1.3 已发布六个平台架构包。JetBrains Marketplace（plugin 35154，update 1194594）已提交，正在审核；VS Code Marketplace 尚未上架，请使用 VSIX。
+两个插件的 1.1.0 ZIP / VSIX 已在各仓库 GitHub Releases 发布；CLI v1.1.3 已发布六个平台架构包。JetBrains Marketplace（plugin 35154，update 1194594）已提交，正在审核，可先安装 GitHub ZIP。
+
+[VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=neko233-com.bytemsg233) 已正式上架 1.1.0，匿名下载的 VSIX 与 GitHub 发行包 SHA-256 一致，隔离配置下的市场安装成功：
+
+```sh
+code --install-extension neko233-com.bytemsg233
+```
